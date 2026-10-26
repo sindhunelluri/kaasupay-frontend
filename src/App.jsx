@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
+import { apiUrl } from "./api";
 
 function App() {
   const [activePage, setActivePage] = useState("Dashboard");
@@ -52,7 +53,7 @@ useEffect(() => {
           ? "/api/v1/user/signup"
           : "/api/v1/user/signin";
 
-      const response = await fetch(endpoint, {
+      const response = await fetch(apiUrl(endpoint), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -114,13 +115,13 @@ useEffect(() => {
         };
 
         const [userResponse, balanceResponse, transactionResponse] =
-          await Promise.all([
-            fetch("/api/v1/user/me", { headers }),
-            fetch("/api/v1/wallet/balance", { headers }),
-            fetch("/api/v1/wallet/transactions?page=1&limit=10", {
-              headers,
-            }),
-          ]);
+  await Promise.all([
+    fetch(apiUrl("/api/v1/user/me"), { headers }),
+    fetch(apiUrl("/api/v1/wallet/balance"), { headers }),
+    fetch(apiUrl("/api/v1/wallet/transactions?page=1&limit=10"), {
+      headers,
+    }),
+  ]);
 
         if (
           userResponse.status === 401 ||
@@ -563,7 +564,7 @@ function AddMoneyForm({ token }) {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/v1/wallet/add-money/order", {
+      const response = await fetch(apiUrl("/api/v1/wallet/add-money/order"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -622,7 +623,7 @@ function AddMoneyForm({ token }) {
 
           try {
             const response = await fetch(
-              "/api/v1/wallet/add-money/verify",
+              apiUrl("/api/v1/wallet/add-money/verify"),
               {
                 method: "POST",
                 headers: {
@@ -1207,7 +1208,7 @@ const [keyedTransfer, setKeyedTransfer] = useState(() => {
     );
 
     try {
-      const response = await fetch("/api/v1/wallet/transfer", {
+      const response = await fetch(apiUrl("/api/v1/wallet/transfer"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
