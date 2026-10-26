@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import "./App.css";
 import { apiUrl } from "./api";
 
@@ -34,12 +34,22 @@ useEffect(() => {
   const [user, setUser] = useState(null);
   const [walletBalance, setWalletBalance] = useState(null);
   const [transactions, setTransactions] = useState([]);
-  const [accountLoading, setAccountLoading] = useState(false);
+  const [transactionPagination, setTransactionPagination] = useState({
+  page: 1,
+  limit: 10,
+  total: 0,
+  totalPages: 0,
+});
+const [transactionLoading, setTransactionLoading] = useState(false);
+const [accountLoading, setAccountLoading] = useState(false);
 
   const menuItems = [
     { name: "Dashboard", icon: "▦" },
     { name: "Add Money", icon: "+" },
     { name: "Transfer", icon: "↗" },
+    { name: "Bank Accounts", icon: "⌂" },
+    { name: "Withdraw", icon: "↓" },
+    { name: "Withdrawal History", icon: "◷" },
     { name: "Transactions", icon: "↔" },
   ];
 
@@ -161,6 +171,14 @@ useEffect(() => {
           setUser(userData.user);
           setWalletBalance(Number(balanceData.balanceInRupees));
           setTransactions(transactionData.transactions || []);
+          setTransactionPagination(
+            transactionData.pagination || {
+              page: 1,
+              limit: 10,
+              total: (transactionData.transactions || []).length,
+              totalPages: 1,
+          }
+          );
         }
       } catch (error) {
         if (!cancelled) {
@@ -181,6 +199,110 @@ useEffect(() => {
       cancelled = true;
     };
   }, [token]);
+
+  
+async function loadTransactions(page) {
+  if (!token || transactionLoading) return;
+
+  setTransactionLoading(true);
+
+  try {
+    const response = await fetch(
+      apiUrl(
+        `/api/v1/wallet/transactions?page=${page}&limit=${transactionPagination.limit}`
+      ),
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (response.status === 401) {
+      logout();
+      setAuthError("Your session expired. Please sign in again.");
+      return;
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        data.error || "Could not load transaction history."
+      );
+    }
+
+    setTransactions(data.transactions || []);
+    setTransactionPagination(
+      data.pagination || {
+        page,
+        limit: 10,
+        total: (data.transactions || []).length,
+        totalPages: 1,
+      }
+    );
+  } catch (error) {
+    setAuthError(error.message || "Unable to load transactions.");
+  } finally {
+    setTransactionLoading(false);
+  }
+}
+
+async function refreshWalletData() {
+  if (!token) return;
+
+  const headers = {
+    Authorization: `Bearer ${token}`,
+  };
+
+  try {
+    const [balanceResponse, transactionResponse] = await Promise.all([
+      fetch(apiUrl("/api/v1/wallet/balance"), { headers }),
+      fetch(apiUrl("/api/v1/wallet/transactions?page=1&limit=10"), {
+        headers,
+      }),
+    ]);
+
+    if (
+      balanceResponse.status === 401 ||
+      transactionResponse.status === 401
+    ) {
+      logout();
+      setAuthError("Your session expired. Please sign in again.");
+      return;
+    }
+
+    const balanceData = await balanceResponse.json();
+    const transactionData = await transactionResponse.json();
+
+    if (!balanceResponse.ok) {
+      throw new Error(
+        balanceData.error || "Could not refresh wallet balance."
+      );
+    }
+
+    if (!transactionResponse.ok) {
+      throw new Error(
+        transactionData.error || "Could not refresh transactions."
+      );
+    }
+
+    setWalletBalance(Number(balanceData.balanceInRupees));
+    setTransactions(transactionData.transactions || []);
+    setTransactionPagination(
+      transactionData.pagination || {
+        page: 1,
+        limit: 10,
+        total: (transactionData.transactions || []).length,
+        totalPages: 1,
+      }
+    );
+  } catch (error) {
+    setAuthError(
+      error.message || "Unable to refresh wallet information."
+    );
+  }
+}
 
   if (!token) {
     return (
@@ -415,7 +537,7 @@ useEffect(() => {
                   <span className="stat-icon green">↓</span>
                 </div>
                 <h2>₹{totalTopups.toFixed(2)}</h2>
-                <p>From the loaded transactions</p>
+                <p>From the currently loaded records</p>
               </div>
 
               <div className="stat-card">
@@ -423,8 +545,8 @@ useEffect(() => {
                   <span>Transactions</span>
                   <span className="stat-icon purple">↔</span>
                 </div>
-                <h2>{transactions.length}</h2>
-                <p>Loaded transaction records</p>
+                <h2>{transactionPagination.total}</h2>
+                <p>Total transaction records</p>
               </div>
             </section>
 
@@ -474,18 +596,54 @@ useEffect(() => {
                   </span>
                   <span className="quick-arrow">›</span>
                 </button>
+
+                <button onClick={() => navigate("Bank Accounts")}>
+                  <span className="quick-icon blue">⌂</span>
+                  <span>
+                    <strong>Bank accounts</strong>
+                    <small>Manage saved bank details</small>
+                  </span>
+                  <span className="quick-arrow">›</span>
+                </button>
+
+                <button onClick={() => navigate("Withdraw")}>
+                  <span className="quick-icon orange">↓</span>
+                  <span>
+                    <strong>Withdraw money</strong>
+                    <small>Review withdrawal requirements</small>
+                  </span>
+                  <span className="quick-arrow">›</span>
+                </button>
               </div>
             </section>
           </>
         )}
         
         {activePage === "Add Money" && (
-          <AddMoneyForm token={token} />
-        )}
+  <AddMoneyForm
+    token={token}
+    onSuccess={refreshWalletData}
+  />
+)}
 
-        {activePage === "Transfer" && (
-          <TransferForm token={token} />
-        )}
+{activePage === "Transfer" && (
+  <TransferForm
+    token={token}
+    onSuccess={refreshWalletData}
+  />
+)}
+
+        {activePage === "Bank Accounts" && (
+  <BankAccountsPage token={token} />
+)}
+
+{activePage === "Withdraw" && (
+  <WithdrawPage token={token} />
+)}
+
+{activePage === "Withdrawal History" && (
+  <WithdrawalHistoryPage token={token} />
+)}
 
         {activePage === "Transactions" && (
           <section className="content-card">
@@ -496,9 +654,58 @@ useEffect(() => {
               </div>
             </div>
             <TransactionTable items={transactions} />
-            {transactions.length === 0 && (
-              <p className="form-help">No transactions found.</p>
-            )}
+
+{transactionLoading && (
+  <p className="form-help">Loading transactions...</p>
+)}
+
+{!transactionLoading && transactions.length === 0 && (
+  <p className="form-help">
+    No transactions found on this page.
+  </p>
+)}
+
+<div className="transaction-pagination">
+  <span>
+    {transactionPagination.total === 0
+      ? "No transactions"
+      : `Page ${transactionPagination.page} of ${Math.max(
+          1,
+          transactionPagination.totalPages
+        )} · ${transactionPagination.total} total transactions`}
+  </span>
+
+  <div className="transaction-pagination-actions">
+    <button
+      type="button"
+      className="light-button"
+      disabled={
+        transactionLoading ||
+        transactionPagination.page <= 1
+      }
+      onClick={() =>
+        loadTransactions(transactionPagination.page - 1)
+      }
+    >
+      ← Previous
+    </button>
+
+    <button
+      type="button"
+      className="light-button"
+      disabled={
+        transactionLoading ||
+        transactionPagination.page >=
+          transactionPagination.totalPages
+      }
+      onClick={() =>
+        loadTransactions(transactionPagination.page + 1)
+      }
+    >
+      Next →
+    </button>
+  </div>
+</div>
           </section>
         )}
 
@@ -513,7 +720,7 @@ useEffect(() => {
 
 
 
-function AddMoneyForm({ token }) {
+function AddMoneyForm({ token ,onSuccess}) {
   const [amount, setAmount] = useState("10");
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -647,6 +854,7 @@ function AddMoneyForm({ token }) {
             }
 
             setIsSuccess(true);
+            await onSuccess?.();
 
             let successMessage =
               result.message || "Payment verified successfully.";
@@ -1109,7 +1317,7 @@ function AuthScreen({ mode, setMode, onSubmit, error, loading }) {
 }
 
 
-function TransferForm({ token }) {
+function TransferForm({ token, onSuccess }) {
   const [to, setTo] = useState(() => {
   try {
     const saved = JSON.parse(
@@ -1226,6 +1434,7 @@ const [keyedTransfer, setKeyedTransfer] = useState(() => {
 
       setSuccess(true);
       setMessage("Transfer successful!");
+      await onSuccess?.();
       setTo("");
       setAmount("");
       setNote("");
@@ -1306,74 +1515,646 @@ const [keyedTransfer, setKeyedTransfer] = useState(() => {
   );
 }
 
-function TransactionTable({ items }) {
+
+function TransactionTable({ items = [] }) {
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [selectedId, setSelectedId] = useState(null);
+
   function formatAmount(amount) {
-    return `₹${(Number(amount || 0) / 100).toFixed(2)}`;
+    return `₹${(Number(amount || 0) / 100).toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
   }
 
-  function transactionTitle(item) {
-    if (item.type === "TOPUP") return "Wallet top-up";
-    if (item.type === "TRANSFER") return "Wallet transfer";
-    return item.type || "Transaction";
+  function formatDate(value) {
+    if (!value) return "—";
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+
+    return date.toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   }
+
+  function getPerson(person) {
+    if (!person) return "External payment / wallet";
+
+    const name = `${person.firstName || ""} ${
+      person.lastName || ""
+    }`.trim();
+
+    return name
+      ? `${name} (@${person.username || "user"})`
+      : `@${person.username || "user"}`;
+  }
+
+  function getDirection(item) {
+    if (item.type === "TOPUP" || item.type === "DEPOSIT") {
+      return "CREDIT";
+    }
+
+    if (item.type === "REVERSAL") {
+      return "CREDIT";
+    }
+
+    if (item.type === "WITHDRAWAL") {
+      return "DEBIT";
+    }
+
+    if (item.type === "TRANSFER") {
+      return item.withWhom?.startsWith("Transfer from")
+        ? "CREDIT"
+        : "DEBIT";
+    }
+
+    return item.fromUserId ? "DEBIT" : "CREDIT";
+  }
+
+  function getTitle(item) {
+    switch (item.type) {
+      case "TOPUP":
+        return "Wallet top-up";
+      case "DEPOSIT":
+        return "Wallet deposit";
+      case "TRANSFER":
+        return item.withWhom || "Wallet transfer";
+      case "WITHDRAWAL":
+        return "Bank withdrawal";
+      case "REVERSAL":
+        return "Transaction reversal";
+      default:
+        return item.type || "Transaction";
+    }
+  }
+
+
+  function getStatusClass(status) {
+  switch (String(status || "").toUpperCase()) {
+    case "SUCCESS":
+    case "PAID":
+    case "COMPLETED":
+      return "status-success";
+
+    case "PENDING":
+    case "PROCESSING":
+    case "NEEDS_REVIEW":
+      return "status-pending";
+
+    case "FAILED":
+    case "REJECTED":
+    case "CANCELLED":
+      return "status-failed";
+
+    default:
+      return "status-unknown";
+  }
+}
+
+  const filteredItems = items.filter((item) => {
+    const direction = getDirection(item);
+    const date = item.createdAt ? new Date(item.createdAt) : null;
+    const query = search.trim().toLowerCase();
+
+    const searchableText = [
+      item._id,
+      item.type,
+      item.status,
+      item.note,
+      item.withWhom,
+      item.fromUserId?.username,
+      item.fromUserId?.firstName,
+      item.fromUserId?.lastName,
+      item.toUserId?.username,
+      item.toUserId?.firstName,
+      item.toUserId?.lastName,
+      String(Number(item.amount || 0) / 100),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    if (query && !searchableText.includes(query)) return false;
+
+    if (typeFilter === "SENT" &&
+        !(item.type === "TRANSFER" && direction === "DEBIT")) {
+      return false;
+    }
+
+    if (typeFilter === "RECEIVED" &&
+        !(item.type === "TRANSFER" && direction === "CREDIT")) {
+      return false;
+    }
+
+    if (typeFilter === "TOPUP" &&
+        !["TOPUP", "DEPOSIT"].includes(item.type)) {
+      return false;
+    }
+
+    if (typeFilter === "WITHDRAWAL" &&
+        item.type !== "WITHDRAWAL") {
+      return false;
+    }
+
+    if (
+      statusFilter !== "ALL" &&
+      String(item.status || "").toUpperCase() !== statusFilter
+    ) {
+      return false;
+    }
+
+    if (fromDate) {
+      const start = new Date(`${fromDate}T00:00:00`);
+      if (!date || date < start) return false;
+    }
+
+    if (toDate) {
+      const end = new Date(`${toDate}T23:59:59.999`);
+      if (!date || date > end) return false;
+    }
+
+    return true;
+  });
 
   return (
-    <div className="table-wrapper">
-      <table>
-        <thead>
-          <tr>
-            <th>TRANSACTION</th>
-            <th>DATE</th>
-            <th>TYPE</th>
-            <th>AMOUNT</th>
-            <th>STATUS</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item) => {
-            const isCredit = item.type === "TOPUP" || !item.fromUserId;
-            const date = item.createdAt
-              ? new Date(item.createdAt).toLocaleDateString("en-IN", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                })
-              : "—";
+    <div className="transaction-history">
+      <div className="transaction-filters">
+        <input
+          type="search"
+          aria-label="Search transactions"
+          placeholder="Search username, note, ID or amount..."
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
 
-            return (
-              <tr key={item._id}>
-                <td>
-                  <div className="transaction-name">
-                    <span className="transaction-icon">
-                      {isCredit ? "↓" : "↗"}
-                    </span>
-                    <strong>{transactionTitle(item)}</strong>
-                  </div>
-                </td>
-                <td>{date}</td>
-                <td>
-                  <span className="type-credit">
-                    {isCredit ? "Credit" : "Transfer"}
-                  </span>
-                </td>
-                <td className={isCredit ? "amount-credit" : ""}>
-                  {isCredit ? "+" : "−"}{formatAmount(item.amount)}
-                </td>
-                <td>
-                  <span className="status-success">
-                    <span /> {item.status || "Unknown"}
-                  </span>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      {items.length === 0 && (
-        <p className="form-help">No transactions found yet.</p>
-      )}
+        <select
+          aria-label="Filter transaction type"
+          value={typeFilter}
+          onChange={(event) => setTypeFilter(event.target.value)}
+        >
+          <option value="ALL">All transactions</option>
+          <option value="SENT">Money sent</option>
+          <option value="RECEIVED">Money received</option>
+          <option value="TOPUP">Money added</option>
+          <option value="WITHDRAWAL">Withdrawals</option>
+        </select>
+
+        <select
+          aria-label="Filter transaction status"
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value)}
+        >
+          <option value="ALL">All statuses</option>
+          <option value="SUCCESS">Success</option>
+          <option value="PENDING">Pending</option>
+          <option value="FAILED">Failed</option>
+        </select>
+
+        <label>
+          From
+          <input
+            type="date"
+            value={fromDate}
+            onChange={(event) => setFromDate(event.target.value)}
+          />
+        </label>
+
+        <label>
+          To
+          <input
+            type="date"
+            value={toDate}
+            min={fromDate || undefined}
+            onChange={(event) => setToDate(event.target.value)}
+          />
+        </label>
+
+        <button
+          type="button"
+          className="light-button"
+          onClick={() => {
+            setSearch("");
+            setTypeFilter("ALL");
+            setStatusFilter("ALL");
+            setFromDate("");
+            setToDate("");
+          }}
+        >
+          Clear filters
+        </button>
+      </div>
+
+      <p className="transaction-result-count">
+        Showing {filteredItems.length} of {items.length} loaded transactions
+      </p>
+
+      <div className="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>TRANSACTION</th>
+              <th>DATE & TIME</th>
+              <th>FROM</th>
+              <th>TO</th>
+              <th>AMOUNT</th>
+              <th>STATUS</th>
+              <th>DETAILS</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {filteredItems.map((item) => {
+              const direction = getDirection(item);
+              const isCredit = direction === "CREDIT";
+              const isSelected = selectedId === item._id;
+
+              const sender =
+                item.type === "TOPUP" || item.type === "DEPOSIT"
+                  ? "Payment gateway"
+                  : item.type === "REVERSAL"
+                    ? "Wallet reversal"
+                    : item.fromUserId
+                      ? getPerson(item.fromUserId)
+                      : "External source";
+
+              const recipient =
+                item.type === "WITHDRAWAL"
+                  ? "Bank account"
+                  : item.toUserId
+                    ? getPerson(item.toUserId)
+                    : "External destination";
+
+              return (
+              <Fragment key={item._id}>
+                  <tr>
+                    <td>
+                      <div className="transaction-name">
+                        <span className="transaction-icon">
+                          {isCredit ? "↓" : "↗"}
+                        </span>
+                        <strong>{getTitle(item)}</strong>
+                      </div>
+                    </td>
+
+                    <td>{formatDate(item.createdAt)}</td>
+                    <td>{sender}</td>
+                    <td>{recipient}</td>
+
+                    <td className={isCredit ? "amount-credit" : ""}>
+                      {isCredit ? "+" : "−"}
+                      {formatAmount(item.amount)}
+                    </td>
+
+                    <td>
+                      <span className={getStatusClass(item.status)}>
+                        <span />
+                        {item.status || "Unknown"}
+                      </span>
+                    </td>
+
+                    <td>
+                      <button
+                        type="button"
+                        className="text-button"
+                        onClick={() =>
+                          setSelectedId(isSelected ? null : item._id)
+                        }
+                      >
+                        {isSelected ? "Hide" : "View"}
+                      </button>
+                    </td>
+                  </tr>
+
+                  {isSelected && (
+                    <tr>
+                      <td colSpan={7}>
+                        <div className="transaction-detail-panel">
+                          <strong>Transaction details</strong>
+
+                          <p>
+                            <b>Transaction ID:</b> {item._id || "—"}
+                          </p>
+                          <p>
+                            <b>Type:</b> {item.type || "—"}
+                          </p>
+                          <p>
+                            <b>Note:</b> {item.note || "No note provided"}
+                          </p>
+                          <p>
+                            <b>Sender:</b> {sender}
+                          </p>
+                          <p>
+                            <b>Recipient:</b> {recipient}
+                          </p>
+                          <p>
+                            <b>Amount:</b> {formatAmount(item.amount)}
+                          </p>
+                          <p>
+                            <b>Status:</b> {item.status || "Unknown"}
+                          </p>
+                          <p>
+                            <b>Date:</b> {formatDate(item.createdAt)}
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+
+        {filteredItems.length === 0 && (
+          <p className="form-help">
+            No transactions match your search or filters.
+          </p>
+        )}
+      </div>
     </div>
   );
 }
+
+
+function BankAccountsPage({ token }) {
+  const [accounts, setAccounts] = useState([]);
+  const [holderName, setHolderName] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [ifsc, setIfsc] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const [isError, setIsError] = useState(false);
+
+  const styles = {
+    page: { display: "grid", gap: 22 },
+    hero: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap", padding: "24px 26px", borderRadius: 20, background: "linear-gradient(125deg, #fff7ed 0%, #fff 60%, #fef3c7 100%)", border: "1px solid #fed7aa" },
+    heroIcon: { width: 54, height: 54, borderRadius: 16, display: "grid", placeItems: "center", background: "#f97316", color: "#fff", fontSize: 25, flexShrink: 0, boxShadow: "0 8px 18px rgba(249,115,22,.18)" },
+    heroTitle: { margin: 0, fontSize: 25, lineHeight: 1.2, color: "#1f2937", letterSpacing: "-0.5px" },
+    subtitle: { margin: "7px 0 0", color: "#6b7280", fontSize: 14, lineHeight: 1.55 },
+    layout: { display: "grid", gridTemplateColumns: "minmax(280px, .85fr) minmax(320px, 1.15fr)", gap: 20, alignItems: "start" },
+    panel: { background: "#fff", border: "1px solid #e5e7eb", borderRadius: 18, padding: 22, boxShadow: "0 5px 20px rgba(15,23,42,.035)", minWidth: 0 },
+    panelTitle: { margin: 0, color: "#111827", fontSize: 17, fontWeight: 700 },
+    panelText: { margin: "6px 0 20px", color: "#6b7280", fontSize: 13, lineHeight: 1.5 },
+    label: { display: "grid", gap: 7, color: "#374151", fontWeight: 600, fontSize: 13, marginBottom: 15 },
+    input: { width: "100%", boxSizing: "border-box", border: "1px solid #d1d5db", borderRadius: 10, padding: "12px 13px", color: "#111827", background: "#fff", fontSize: 14, outlineColor: "#f97316" },
+    primary: { display: "inline-flex", justifyContent: "center", alignItems: "center", gap: 8, width: "100%", border: 0, borderRadius: 11, padding: "12px 16px", background: saving ? "#fdba74" : "#ea580c", color: "#fff", fontSize: 14, fontWeight: 700, cursor: saving ? "wait" : "pointer", boxShadow: "0 5px 12px rgba(234,88,12,.15)" },
+    secondary: { border: "1px solid #fed7aa", borderRadius: 9, padding: "8px 11px", background: "#fff7ed", color: "#c2410c", fontSize: 12, fontWeight: 700, cursor: loading ? "wait" : "pointer" },
+    accountList: { display: "grid", gap: 12 },
+    account: { position: "relative", overflow: "hidden", padding: 17, border: "1px solid #e5e7eb", borderRadius: 14, background: "linear-gradient(135deg,#ffffff 0%,#f9fafb 100%)" },
+    accountTop: { display: "flex", alignItems: "center", gap: 12, marginBottom: 17 },
+    bankIcon: { width: 42, height: 42, display: "grid", placeItems: "center", flexShrink: 0, borderRadius: 12, background: "#ffedd5", color: "#c2410c", fontSize: 20 },
+    holder: { margin: 0, fontSize: 14, fontWeight: 700, color: "#1f2937", overflowWrap: "anywhere" },
+    small: { margin: "4px 0 0", color: "#6b7280", fontSize: 12 },
+    accountMeta: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, paddingTop: 13, borderTop: "1px solid #e5e7eb" },
+    metaLabel: { margin: 0, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: "#9ca3af" },
+    metaValue: { margin: "5px 0 0", fontSize: 13, fontWeight: 700, color: "#374151", overflowWrap: "anywhere" },
+    empty: { textAlign: "center", border: "1px dashed #d1d5db", borderRadius: 14, padding: "30px 18px", background: "#fafafa" },
+    status: { margin: "14px 0 0", padding: "11px 13px", borderRadius: 10, fontSize: 13, lineHeight: 1.5, background: isError ? "#fef2f2" : "#f0fdf4", color: isError ? "#b91c1c" : "#166534", border: `1px solid ${isError ? "#fecaca" : "#bbf7d0"}` },
+    hint: { margin: "13px 0 0", fontSize: 12, color: "#9ca3af", lineHeight: 1.5 },
+  };
+
+  async function loadAccounts() {
+    setLoading(true);
+    try {
+      const response = await fetch(apiUrl("/api/v1/wallet/bank-accounts"), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not load bank accounts.");
+      setAccounts(data.bankAccounts || []);
+      setIsError(false);
+    } catch (error) {
+      setIsError(true);
+      setMessage(error.message || "Could not load bank accounts.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { loadAccounts(); }, [token]);
+
+  async function addAccount(event) {
+    event.preventDefault();
+    setMessage("");
+    setIsError(false);
+    setSaving(true);
+    try {
+      const response = await fetch(apiUrl("/api/v1/wallet/bank-accounts"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          holderName: holderName.trim(),
+          accountNumber: accountNumber.trim(),
+          ifsc: ifsc.trim().toUpperCase(),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not register bank account.");
+      setMessage(data.message || "Bank account registered successfully.");
+      setHolderName(""); setAccountNumber(""); setIfsc("");
+      await loadAccounts();
+    } catch (error) {
+      setIsError(true);
+      setMessage(error.message || "Could not register bank account.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <section style={styles.page}>
+      <header style={styles.hero}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <div style={styles.heroIcon} aria-hidden="true">⌂</div>
+          <div>
+            <h2 style={styles.heroTitle}>Bank accounts</h2>
+            <p style={styles.subtitle}>Manage your saved accounts for future withdrawal requests.</p>
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 11px", borderRadius: 999, background: "#fff", border: "1px solid #fed7aa", color: "#9a3412", fontSize: 12, fontWeight: 700 }}>
+          <span aria-hidden="true">✓</span> Private account details
+        </div>
+      </header>
+
+      <div className="bank-account-layout" style={styles.layout}>
+        <div style={styles.panel}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 11 }}>
+            <div style={{ ...styles.bankIcon, width: 38, height: 38, fontSize: 18 }}>＋</div>
+            <div>
+              <h3 style={styles.panelTitle}>Add a bank account</h3>
+              <p style={styles.panelText}>Enter the details exactly as registered with your bank.</p>
+            </div>
+          </div>
+          <form onSubmit={addAccount}>
+            <label style={styles.label}>Account holder name
+              <input style={styles.input} value={holderName} onChange={e => setHolderName(e.target.value)} minLength={2} maxLength={60} required autoComplete="name" placeholder="Name as per bank records" />
+            </label>
+            <label style={styles.label}>Account number
+              <input style={styles.input} value={accountNumber} onChange={e => setAccountNumber(e.target.value.replace(/\D/g, ""))} inputMode="numeric" pattern="[0-9]{9,18}" minLength={9} maxLength={18} required autoComplete="off" placeholder="9–18 digit account number" />
+            </label>
+            <label style={styles.label}>IFSC code
+              <input style={{ ...styles.input, textTransform: "uppercase" }} value={ifsc} onChange={e => setIfsc(e.target.value.toUpperCase())} pattern="[A-Z]{4}0[A-Z0-9]{6}" maxLength={11} required autoComplete="off" placeholder="e.g. HDFC0001234" />
+            </label>
+            <button style={styles.primary} type="submit" disabled={saving}>{saving ? "Saving account…" : "＋  Save bank account"}</button>
+          </form>
+          {message && <p style={styles.status} role="status">{message}</p>}
+          <p style={styles.hint}>Your account number is masked in the saved-account list. Never share your banking credentials or OTP.</p>
+        </div>
+
+        <div style={styles.panel}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 18 }}>
+            <div>
+              <h3 style={styles.panelTitle}>Saved accounts <span style={{ color: "#9ca3af", fontWeight: 500 }}>({accounts.length})</span></h3>
+              <p style={{ ...styles.panelText, marginBottom: 0 }}>Choose from these accounts when preparing a withdrawal.</p>
+            </div>
+            <button style={styles.secondary} type="button" onClick={loadAccounts} disabled={loading}>{loading ? "Loading…" : "↻ Refresh"}</button>
+          </div>
+          {loading ? (
+            <div style={styles.empty}><p style={{ margin: 0, color: "#6b7280", fontSize: 13 }}>Loading your saved accounts…</p></div>
+          ) : accounts.length === 0 ? (
+            <div style={styles.empty}>
+              <div style={{ ...styles.bankIcon, width: 50, height: 50, margin: "0 auto 12px", fontSize: 23 }}>⌂</div>
+              <p style={{ margin: "0 0 6px", color: "#374151", fontSize: 14, fontWeight: 700 }}>No bank accounts yet</p>
+              <p style={{ margin: 0, color: "#6b7280", fontSize: 12, lineHeight: 1.5 }}>Add your first account using the form. Saved account numbers will be masked here.</p>
+            </div>
+          ) : (
+            <div style={styles.accountList}>
+              {accounts.map(account => (
+                <article key={account.id} style={styles.account}>
+                  <div style={styles.accountTop}>
+                    <div style={styles.bankIcon} aria-hidden="true">▤</div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <p style={styles.holder}>{account.holderName}</p>
+                      <p style={styles.small}>Saved bank account</p>
+                    </div>
+                    <span style={{ padding: "5px 8px", borderRadius: 999, background: "#dcfce7", color: "#166534", fontSize: 10, fontWeight: 800, whiteSpace: "nowrap" }}>SAVED</span>
+                  </div>
+                  <div style={styles.accountMeta}>
+                    <div><p style={styles.metaLabel}>Account number</p><p style={styles.metaValue}>{account.accountNumber}</p></div>
+                    <div><p style={styles.metaLabel}>IFSC code</p><p style={styles.metaValue}>{account.ifsc}</p></div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+          <p style={styles.hint}>For your security, full account numbers are not shown after saving.</p>
+        </div>
+      </div>
+      <style>{`@media (max-width: 820px) { .bank-account-layout { grid-template-columns: 1fr !important; } }`}</style>
+    </section>
+  );
+}
+
+function WithdrawPage({ token }) {
+  const [accounts, setAccounts] = useState([]);
+  const [bankAccountId, setBankAccountId] = useState("");
+  const [amount, setAmount] = useState("100");
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+  const [isError, setIsError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const response = await fetch(apiUrl("/api/v1/wallet/bank-accounts"), {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not load bank accounts.");
+        if (!cancelled) {
+          const list = data.bankAccounts || [];
+          setAccounts(list);
+          setBankAccountId(current => current || list[0]?.id || "");
+        }
+      } catch (error) {
+        if (!cancelled) { setIsError(true); setMessage(error.message || "Could not load bank accounts."); }
+      } finally { if (!cancelled) setLoading(false); }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [token]);
+
+  async function requestWithdrawal(event) {
+    event.preventDefault();
+    setIsError(false);
+    setMessage("Withdrawal submission is paused until the payout worker and review flow are confirmed safe. No request was sent and no balance was debited.");
+    setIsError(true);
+  }
+
+  const rupees = Number(amount);
+  const validAmount = Number.isInteger(rupees) && rupees >= 100 && rupees <= 25000;
+  return (
+    <section className="content-card action-card">
+      <div className="section-heading"><div><h2>Withdraw Money</h2><p>Prepare a withdrawal request to a saved bank account.</p></div></div>
+      <div className="notice" role="note">Safety hold: withdrawal submission is temporarily disabled while the payout worker and review status are verified. This prevents accidental wallet debits or real payouts.</div>
+      {loading ? <p className="form-help">Loading bank accounts...</p> : accounts.length === 0 ? (
+        <div><p className="form-help">Add a bank account before preparing a withdrawal.</p></div>
+      ) : (
+        <form onSubmit={requestWithdrawal} className="form-stack">
+          <label>Bank account
+            <select value={bankAccountId} onChange={e => setBankAccountId(e.target.value)} required>
+              {accounts.map(account => <option key={account.id} value={account.id}>{account.holderName} — {account.accountNumber} ({account.ifsc})</option>)}
+            </select>
+          </label>
+          <label>Amount (₹100–₹25,000)
+            <input type="number" min="100" max="25000" step="1" value={amount} onChange={e => setAmount(e.target.value)} required />
+          </label>
+          <p className="form-help">Backend amount is represented in paise. A request would debit the wallet and enter PENDING status; PENDING does not mean the bank has received the money.</p>
+          <button className="primary-button" type="submit" disabled={!bankAccountId || !validAmount}>Prepare withdrawal (temporarily paused)</button>
+        </form>
+      )}
+      {message && <p className={isError ? "form-help error-text" : "form-help"} role="status">{message}</p>}
+      <button className="light-button" type="button" onClick={() => window.location.reload()}>Refresh page</button>
+    </section>
+  );
+}
+
+function WithdrawalHistoryPage({ token }) {
+  const [withdrawals, setWithdrawals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+
+  async function loadHistory() {
+    setLoading(true); setMessage("");
+    try {
+      const response = await fetch(apiUrl("/api/v1/wallet/withdraw"), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not load withdrawal history.");
+      setWithdrawals(data.withdrawals || []);
+    } catch (error) {
+      setMessage(error.message || "Could not load withdrawal history.");
+    } finally { setLoading(false); }
+  }
+
+  useEffect(() => { loadHistory(); }, [token]);
+  return (
+    <section className="content-card">
+      <div className="section-heading"><div><h2>Withdrawal History</h2><p>Recent withdrawal requests and their current statuses.</p></div><button className="light-button" type="button" onClick={loadHistory} disabled={loading}>Refresh</button></div>
+      {loading ? <p className="form-help">Loading withdrawal history...</p> : message ? <p className="form-help error-text" role="alert">{message}</p> : withdrawals.length === 0 ? <p className="form-help">No withdrawal requests found.</p> : (
+        <div className="table-wrap"><table><thead><tr><th>Reference</th><th>Amount</th><th>Status</th><th>Bank reference</th><th>Date</th></tr></thead><tbody>
+          {withdrawals.map(item => <tr key={item._id || item.reference}><td>{item.reference || "—"}</td><td>₹{(Number(item.amount || 0) / 100).toFixed(2)}</td><td>{item.status || "Unknown"}</td><td>{item.bankRef || "—"}</td><td>{item.createdAt ? new Date(item.createdAt).toLocaleString("en-IN") : "—"}</td></tr>)}
+        </tbody></table></div>
+      )}
+      <p className="form-help">PENDING means accepted for processing, not confirmed as paid to the bank.</p>
+    </section>
+  );
+}
+
 
 export default App;

@@ -2223,3 +2223,240 @@ wallet-payment-method:focus {
     flex-direction: column;
   }
 }
+
+
+
+.transaction-history {
+  width: 100%;
+}
+
+.transaction-filters {
+  display: grid;
+  grid-template-columns: minmax(220px, 2fr) repeat(2, minmax(140px, 1fr));
+  gap: 12px;
+  margin: 20px 0 14px;
+  align-items: end;
+}
+
+.transaction-filters input,
+.transaction-filters select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid #e4ded6;
+  border-radius: 8px;
+  background: #fff;
+  color: #292929;
+  font: inherit;
+}
+
+.transaction-filters label {
+  display: grid;
+  gap: 6px;
+  color: #817970;
+  font-size: 12px;
+}
+
+.transaction-filters button {
+  min-height: 42px;
+}
+
+.transaction-result-count {
+  margin: 12px 0;
+  color: #817970;
+  font-size: 12px;
+}
+
+.transaction-detail-panel {
+  padding: 16px;
+  border-radius: 10px;
+  background: #faf8f5;
+  overflow-wrap: anywhere;
+}
+
+.transaction-detail-panel > strong {
+  display: block;
+  margin-bottom: 12px;
+}
+
+.transaction-detail-panel p {
+  margin: 8px 0;
+  color: #655d54;
+  font-size: 13px;
+}
+
+@media (max-width: 800px) {
+  .transaction-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .transaction-history .table-wrapper {
+    overflow-x: auto;
+  }
+
+  .transaction-history table {
+    min-width: 850px;
+  }
+}
+
+@media (max-width: 480px) {
+  .transaction-filters {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* Transaction history layout */
+.transaction-history {
+  width: 100%;
+  min-width: 0;
+}
+
+.transaction-filters {
+  display: grid;
+  grid-template-columns: minmax(240px, 2fr) repeat(2, minmax(150px, 1fr));
+  gap: 14px;
+  align-items: end;
+  margin: 20px 0 14px;
+}
+
+.transaction-filters > input,
+.transaction-filters > select,
+.transaction-filters > label,
+.transaction-filters > button {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.transaction-filters > input,
+.transaction-filters > select,
+.transaction-filters label input {
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid #e4ded6;
+  border-radius: 8px;
+  background: #fff;
+  color: #292929;
+  font: inherit;
+}
+
+.transaction-filters label {
+  display: grid;
+  gap: 6px;
+  color: #817970;
+  font-size: 12px;
+}
+
+.transaction-filters > button {
+  min-height: 42px;
+}
+
+.transaction-result-count {
+  margin: 12px 0;
+  color: #817970;
+  font-size: 12px;
+}
+
+.transaction-detail-panel {
+  padding: 16px;
+  border-radius: 10px;
+  background: #faf8f5;
+  overflow-wrap: anywhere;
+}
+
+.transaction-detail-panel > strong {
+  display: block;
+  margin-bottom: 12px;
+}
+
+.transaction-detail-panel p {
+  margin: 8px 0;
+  color: #655d54;
+  font-size: 13px;
+}
+
+.transaction-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #eee8e1;
+  color: #817970;
+  font-size: 13px;
+}
+
+.transaction-pagination-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.transaction-pagination-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (min-width: 1000px) {
+  .transaction-filters {
+    grid-template-columns: minmax(240px, 2fr) repeat(2, minmax(150px, 1fr));
+  }
+
+  .transaction-filters label {
+    grid-row: 2;
+  }
+
+  .transaction-filters label:first-of-type {
+    grid-column: 1;
+  }
+
+  .transaction-filters label:nth-of-type(2) {
+    grid-column: 2;
+  }
+
+  .transaction-filters > button {
+    grid-column: 3;
+    grid-row: 2;
+  }
+}
+
+@media (max-width: 800px) {
+  .transaction-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .transaction-filters > input {
+    grid-column: 1 / -1;
+  }
+
+  .transaction-history .table-wrapper {
+    overflow-x: auto;
+  }
+
+  .transaction-history table {
+    min-width: 850px;
+  }
+}
+
+@media (max-width: 480px) {
+  .transaction-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .transaction-filters > input {
+    grid-column: auto;
+  }
+
+  .transaction-pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .transaction-pagination-actions button {
+    flex: 1;
+  }
+}
