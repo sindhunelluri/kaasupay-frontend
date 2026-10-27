@@ -2460,3 +2460,1467 @@ wallet-payment-method:focus {
     flex: 1;
   }
 }
+
+
+/* Public KaasuPay landing page */
+.landing-page {
+  --landing-orange: #f47b20;
+  --landing-ink: #202b3c;
+  --landing-muted: #697386;
+  background: #fff;
+  color: var(--landing-ink);
+  min-height: 100vh;
+  overflow: clip;
+}
+
+.landing-page button,
+.landing-page a {
+  font: inherit;
+}
+
+.landing-page button {
+  cursor: pointer;
+}
+
+.landing-nav {
+  max-width: 1200px;
+  margin: auto;
+  min-height: 86px;
+  padding: 16px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.landing-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--landing-ink);
+  text-decoration: none;
+  font-weight: 800;
+  font-size: 21px;
+}
+
+.landing-logo {
+  width: 38px;
+  height: 38px;
+  display: inline-grid;
+  place-items: center;
+  background: var(--landing-orange);
+  color: white;
+  border-radius: 12px;
+  font-weight: 800;
+}
+
+.landing-links,
+.landing-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.landing-links a {
+  text-decoration: none;
+  color: #566173;
+  font-size: 14px;
+}
+
+.landing-links a:hover {
+  color: var(--landing-orange);
+}
+
+.landing-nav-actions {
+  gap: 12px;
+}
+
+.landing-page .landing-cta,
+.landing-page .landing-signin,
+.landing-page .landing-secondary {
+  border-radius: 10px;
+  padding: 12px 18px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.landing-page .landing-cta {
+  border: 1px solid var(--landing-orange);
+  background: var(--landing-orange);
+  color: white;
+  box-shadow: 0 7px 18px #f47b2029;
+}
+
+.landing-page .landing-cta:hover {
+  background: #df6812;
+}
+
+.landing-page .landing-signin,
+.landing-page .landing-secondary {
+  border: 1px solid #e5e7eb;
+  color: var(--landing-ink);
+  background: white;
+}
+
+.landing-hero {
+  max-width: 1200px;
+  min-height: 570px;
+  padding: 70px 36px 85px;
+  margin: auto;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  align-items: center;
+  gap: 40px;
+}
+
+.landing-hero-copy {
+  max-width: 620px;
+}
+
+.landing-eyebrow {
+  color: var(--landing-orange);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1.8px;
+}
+
+.landing-hero h1 {
+  font-size: clamp(40px, 5vw, 65px);
+  letter-spacing: -2.5px;
+  line-height: 1.08;
+  margin: 22px 0;
+}
+
+.landing-hero h1 span {
+  color: var(--landing-orange);
+}
+
+.landing-hero-copy > p,
+.landing-section-heading > p,
+.landing-integrity p,
+.landing-bottom-cta p {
+  color: var(--landing-muted);
+  line-height: 1.8;
+  font-size: 16px;
+}
+
+.landing-hero-copy > p {
+  max-width: 520px;
+}
+
+.landing-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.landing-trust-note {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 28px;
+  color: #647084;
+  font-size: 12px;
+}
+
+.landing-trust-note span {
+  color: #14805e;
+  font-weight: 900;
+}
+
+.landing-wallet-visual {
+  min-height: 390px;
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.landing-orbit {
+  position: absolute;
+  border: 1px solid #f47b2024;
+  border-radius: 50%;
+}
+
+.landing-orbit-one {
+  width: 390px;
+  height: 390px;
+}
+
+.landing-orbit-two {
+  width: 300px;
+  height: 300px;
+}
+
+.landing-wallet-card {
+  z-index: 1;
+  width: min(100%, 340px);
+  min-height: 220px;
+  box-sizing: border-box;
+  padding: 26px;
+  border-radius: 22px;
+  color: white;
+  background: linear-gradient(140deg, #26364b, #111b2b);
+  box-shadow: 0 28px 70px #18263835;
+  transform: rotate(-5deg);
+}
+
+.landing-wallet-top,
+.landing-card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.landing-wallet-top {
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+.landing-card-dot {
+  color: var(--landing-orange);
+}
+
+.landing-wallet-card > p {
+  margin-top: 32px;
+  color: #c2ccda;
+  font-size: 12px;
+}
+
+.landing-wallet-card h2 {
+  font-size: 22px;
+  line-height: 1.3;
+}
+
+.landing-card-bottom {
+  margin-top: 28px;
+  color: #d3d9e2;
+  font-size: 11px;
+}
+
+.landing-floating-card {
+  z-index: 2;
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid #edf0f4;
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 14px 35px #17233814;
+}
+
+.landing-float-top {
+  top: 42px;
+  right: -4px;
+}
+
+.landing-float-bottom {
+  bottom: 38px;
+  left: -5px;
+}
+
+.landing-float-icon,
+.landing-feature-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #fff0e4;
+  color: var(--landing-orange);
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.landing-floating-card strong,
+.landing-floating-card small {
+  display: block;
+}
+
+.landing-floating-card strong {
+  font-size: 12px;
+}
+
+.landing-floating-card small {
+  margin-top: 5px;
+  color: var(--landing-muted);
+  font-size: 10px;
+}
+
+.landing-section,
+.landing-how {
+  padding: 85px 28px;
+}
+
+.landing-section {
+  background: #faf9f7;
+}
+
+.landing-section-heading {
+  max-width: 720px;
+  margin: 0 auto 42px;
+  text-align: center;
+}
+
+.landing-section-heading h2,
+.landing-integrity h2,
+.landing-bottom-cta h2 {
+  margin: 14px 0;
+  font-size: clamp(28px, 3.5vw, 40px);
+  letter-spacing: -1px;
+}
+
+.landing-feature-grid,
+.landing-steps {
+  max-width: 1100px;
+  margin: auto;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.landing-feature {
+  padding: 26px;
+  border: 1px solid #eceef1;
+  border-radius: 17px;
+  background: white;
+}
+
+.landing-feature h3,
+.landing-steps h3 {
+  margin: 20px 0 10px;
+  font-size: 17px;
+}
+
+.landing-feature p,
+.landing-steps p {
+  color: var(--landing-muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.landing-how {
+  background: white;
+}
+
+.landing-steps {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.landing-steps article {
+  padding: 24px;
+  border-left: 2px solid #f6a568;
+}
+
+.landing-steps article > span {
+  color: var(--landing-orange);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.landing-integrity {
+  max-width: 1050px;
+  margin: 10px auto 80px;
+  padding: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 30px;
+  border-radius: 22px;
+  background: #f7f5f2;
+}
+
+.landing-integrity > div:first-child {
+  max-width: 700px;
+}
+
+.landing-integrity-mark {
+  width: 74px;
+  height: 74px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #e0f5e9;
+  color: #16805b;
+  font-size: 32px;
+  font-weight: 800;
+}
+
+.landing-bottom-cta {
+  padding: 70px 24px;
+  text-align: center;
+  background: #202b3c;
+  color: white;
+}
+
+.landing-bottom-cta p {
+  color: #d0d6df;
+}
+
+.landing-bottom-cta .landing-cta {
+  margin-top: 12px;
+}
+
+.landing-footer {
+  max-width: 1150px;
+  margin: auto;
+  padding: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  color: var(--landing-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .landing-nav {
+    flex-wrap: wrap;
+  }
+
+  .landing-links {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 18px;
+  }
+
+  .landing-hero {
+    grid-template-columns: 1fr;
+    padding-top: 55px;
+  }
+
+  .landing-hero-copy {
+    margin: auto;
+  }
+
+  .landing-wallet-visual {
+    max-width: 520px;
+    width: 100%;
+    margin: auto;
+  }
+
+  .landing-feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .landing-integrity {
+    margin: 10px 24px 60px;
+  }
+}
+
+@media (max-width: 560px) {
+  .landing-nav {
+    padding: 18px;
+    gap: 16px;
+  }
+
+  .landing-brand {
+    font-size: 18px;
+  }
+
+  .landing-nav-actions {
+    gap: 6px;
+  }
+
+  .landing-page .landing-cta,
+  .landing-page .landing-signin {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .landing-links {
+    justify-content: flex-start;
+    gap: 12px;
+  }
+
+  .landing-links a {
+    font-size: 12px;
+  }
+
+  .landing-hero {
+    padding: 48px 22px 60px;
+    gap: 12px;
+  }
+
+  .landing-hero h1 {
+    font-size: 42px;
+    letter-spacing: -1.5px;
+  }
+
+  .landing-wallet-visual {
+    min-height: 330px;
+  }
+
+  .landing-orbit-one {
+    width: 310px;
+    height: 310px;
+  }
+
+  .landing-orbit-two {
+    width: 240px;
+    height: 240px;
+  }
+
+  .landing-wallet-card {
+    width: 280px;
+    padding: 20px;
+  }
+
+  .landing-float-top {
+    right: 0;
+    top: 18px;
+  }
+
+  .landing-float-bottom {
+    left: 0;
+    bottom: 15px;
+  }
+
+  .landing-floating-card {
+    padding: 10px;
+  }
+
+  .landing-feature-grid,
+  .landing-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-section,
+  .landing-how {
+    padding: 60px 20px;
+  }
+
+  .landing-integrity {
+    margin: 0 18px 50px;
+    padding: 26px;
+  }
+
+  .landing-integrity-mark {
+    width: 48px;
+    height: 48px;
+    font-size: 23px;
+  }
+
+  .landing-footer {
+    padding: 22px 18px;
+  }
+}
+
+
+/* Interactive How It Works cards */
+
+.landing-steps {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  align-items: stretch;
+}
+
+.landing-step-card {
+  position: relative;
+  padding: 28px;
+  border: 1px solid #e9eaf0;
+  border-radius: 20px;
+  background: #fff;
+  overflow: hidden;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease,
+    border-color 0.3s ease,
+    background 0.3s ease;
+}
+
+.landing-step-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: #f47b20;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+
+.landing-step-card:hover {
+  transform: translateY(-8px);
+  border-color: #f47b20;
+  background: #fffaf6;
+  box-shadow: 0 20px 45px #f47b201c;
+}
+
+.landing-step-card:hover::before {
+  transform: scaleX(1);
+}
+
+.landing-step-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 28px;
+}
+
+.landing-step-number {
+  color: #f47b20;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+.landing-step-icon {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  background: #fff0e4;
+  font-size: 25px;
+  transition:
+    transform 0.3s ease,
+    background 0.3s ease;
+}
+
+.landing-step-card:hover .landing-step-icon {
+  transform: scale(1.08) rotate(-4deg);
+  background: #ffe1c8;
+}
+
+.landing-step-card h3 {
+  margin: 0 0 12px;
+  color: #202b3c;
+  font-size: 19px;
+  line-height: 1.4;
+}
+
+.landing-step-card > p {
+  min-height: 76px;
+  margin: 0;
+  color: #697386;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.landing-step-details {
+  display: grid;
+  gap: 10px;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  margin-top: 0;
+  color: #475467;
+  font-size: 13px;
+  line-height: 1.6;
+  transform: translateY(8px);
+  transition:
+    max-height 0.4s ease,
+    opacity 0.3s ease,
+    margin-top 0.3s ease,
+    transform 0.3s ease;
+}
+
+.landing-step-card:hover .landing-step-details {
+  max-height: 180px;
+  opacity: 1;
+  margin-top: 20px;
+  transform: translateY(0);
+}
+
+.landing-step-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid #eceef1;
+  color: #f47b20;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.landing-step-link span {
+  transition: transform 0.2s ease;
+}
+
+.landing-step-card:hover .landing-step-link span {
+  transform: translateX(5px);
+}
+
+/* Keyboard accessibility */
+.landing-step-card:focus-within {
+  outline: 2px solid #f47b20;
+  outline-offset: 3px;
+}
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .landing-step-card,
+  .landing-step-card::before,
+  .landing-step-icon,
+  .landing-step-details,
+  .landing-step-link span {
+    transition: none;
+  }
+}
+
+/* Responsive layout */
+@media (max-width: 900px) {
+  .landing-steps {
+    grid-template-columns: 1fr;
+    max-width: 600px;
+  }
+
+  .landing-step-card > p {
+    min-height: 0;
+  }
+
+  /* Keep the details visible on touch devices */
+  .landing-step-details {
+    max-height: 180px;
+    opacity: 1;
+    margin-top: 18px;
+    transform: none;
+  }
+}
+
+/* ========================================
+   KAASUPAY - WEBSITE-WIDE HOVER EFFECTS
+   ======================================== */
+
+/* Smooth interactions across the website */
+.landing-page,
+.landing-page *,
+.app-container,
+.app-container * {
+  transition-property: color, background-color, border-color,
+    box-shadow, transform, opacity;
+  transition-duration: 0.22s;
+  transition-timing-function: ease;
+}
+
+/* Navigation links */
+.landing-links a,
+.landing-nav a {
+  position: relative;
+  text-decoration: none;
+}
+
+.landing-links a:hover,
+.landing-nav a:hover {
+  color: #f47b20;
+}
+
+.landing-links a::after,
+.landing-nav a::after {
+  content: "";
+  position: absolute;
+  bottom: -6px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: #f47b20;
+  transition: width 0.25s ease;
+}
+
+.landing-links a:hover::after,
+.landing-nav a:hover::after {
+  width: 100%;
+}
+
+/* Buttons */
+.landing-page button,
+.app-container button {
+  cursor: pointer;
+}
+
+.landing-page button:hover,
+.app-container button:hover {
+  filter: brightness(0.97);
+  transform: translateY(-2px);
+}
+
+.landing-page button:active,
+.app-container button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Main call-to-action buttons */
+.landing-cta:hover,
+.landing-signin:hover,
+.landing-secondary:hover,
+.landing-bottom-cta button:hover {
+  box-shadow: 0 8px 22px rgba(244, 123, 32, 0.22);
+}
+
+/* Feature cards */
+.landing-feature {
+  cursor: default;
+  transition: transform 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.landing-feature:hover {
+  transform: translateY(-7px);
+  border-color: #f47b20;
+  box-shadow: 0 14px 32px rgba(32, 43, 60, 0.09);
+}
+
+/* How It Works cards */
+.landing-step-card:hover {
+  transform: translateY(-8px);
+  border-color: #f47b20;
+  box-shadow: 0 18px 38px rgba(244, 123, 32, 0.14);
+}
+
+/* Hero wallet illustration */
+.landing-wallet-card:hover {
+  transform: translateY(-6px) rotate(-1deg);
+  box-shadow: 0 24px 50px rgba(32, 43, 60, 0.18);
+}
+
+.landing-floating-card:hover {
+  transform: translateY(-5px) scale(1.03);
+}
+
+/* Dashboard cards - common class patterns */
+.dashboard-card:hover,
+.wallet-card:hover,
+.balance-card:hover,
+.stat-card:hover,
+.summary-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(32, 43, 60, 0.09);
+}
+
+/* Sidebar and dashboard navigation */
+.sidebar a:hover,
+.sidebar button:hover,
+.dashboard-nav a:hover,
+.dashboard-nav button:hover {
+  color: #f47b20;
+  background-color: #fff3e9;
+}
+
+/* Transaction and history rows */
+.transaction-row:hover,
+.transaction-item:hover,
+.history-row:hover,
+tbody tr:hover {
+  background-color: #fff8f2;
+}
+
+/* Form fields */
+input:not([type="checkbox"]):not([type="radio"]):hover,
+select:hover,
+textarea:hover {
+  border-color: #f4a261;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #f47b20;
+  box-shadow: 0 0 0 3px rgba(244, 123, 32, 0.13);
+}
+
+/* Links throughout the site */
+.app-container a:hover {
+  color: #f47b20;
+}
+
+/* Keyboard users */
+.landing-page a:focus-visible,
+.landing-page button:focus-visible,
+.app-container a:focus-visible,
+.app-container button:focus-visible {
+  outline: 2px solid #f47b20;
+  outline-offset: 3px;
+}
+
+/* Touchscreens and reduced-motion users */
+@media (prefers-reduced-motion: reduce) {
+  .landing-page *,
+  .app-container * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    transform: none;
+  }
+}
+
+
+/* Integrity / Security section */
+
+/* Security & Trust section only */
+.landing-integrity {
+  display: block;
+  padding: 80px 24px;
+  margin: 10px auto 60px;
+  background: #fffaf6;
+  border-radius: 0;
+  text-align: center;
+}
+
+.integrity-grid {
+  max-width: 1100px;
+  margin: 42px auto 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.integrity-card {
+  text-align: left;
+}
+
+@media (max-width: 900px) {
+  .integrity-grid {
+    grid-template-columns: 1fr;
+    max-width: 600px;
+  }
+}
+
+.landing-integrity {
+  padding: 90px 6%;
+  background: #fffaf6;
+}
+
+.integrity-grid {
+  max-width: 1100px;
+  margin: 42px auto 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.integrity-card {
+  position: relative;
+  overflow: hidden;
+  padding: 30px 26px;
+  background: #fff;
+  border: 1px solid #f0e8e1;
+  border-radius: 20px;
+  transition: transform 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.integrity-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: #f47b20;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+
+.integrity-card:hover {
+  transform: translateY(-8px);
+  border-color: #f47b20;
+  box-shadow: 0 18px 40px rgba(244, 123, 32, 0.12);
+}
+
+.integrity-card:hover::before {
+  transform: scaleX(1);
+}
+
+.integrity-icon {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 25px;
+  border-radius: 17px;
+  background: #fff0e4;
+  font-size: 27px;
+  transition: transform 0.3s ease,
+    background 0.3s ease;
+}
+
+.integrity-card:hover .integrity-icon {
+  transform: scale(1.08) rotate(-4deg);
+  background: #ffe2cb;
+}
+
+.integrity-label {
+  display: block;
+  margin-bottom: 13px;
+  color: #f47b20;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.integrity-card h3 {
+  margin: 0 0 12px;
+  color: #202b3c;
+  font-size: 20px;
+}
+
+.integrity-card p {
+  min-height: 95px;
+  margin: 0;
+  color: #697386;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.integrity-status {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 22px;
+  padding-top: 17px;
+  border-top: 1px solid #f0e8e1;
+  color: #475467;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.integrity-status-dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #f47b20;
+}
+
+@media (max-width: 900px) {
+  .integrity-grid {
+    grid-template-columns: 1fr;
+    max-width: 600px;
+  }
+
+  .integrity-card p {
+    min-height: 0;
+  }
+}
+
+
+
+/* How It Works - vertical interactive steps */
+.landing-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.landing-steps article,
+.landing-steps .landing-step-card {
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+/* Hover highlight */
+.landing-steps article:hover,
+.landing-steps .landing-step-card:hover {
+  border-color: #f47b20;
+  background: #fff7ed;
+  transform: translateY(-3px);
+}
+
+/* Keep step details visible on touch devices */
+@media (max-width: 900px) {
+  .landing-steps {
+    display: flex;
+    flex-direction: column;
+    max-width: 600px;
+  }
+
+  .landing-step-card > p {
+    min-height: 0;
+  }
+
+  .landing-step-details {
+    max-height: 180px;
+    opacity: 1;
+    margin-top: 18px;
+    transform: none;
+  }
+}
+
+
+.back-to-overview {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 20px 24px;
+  padding: 10px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  color: #202b3c;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.back-to-overview:hover {
+  background-color: transparent;
+  color: #8B4513;
+}
+
+
+/* KaasuPay — White Background Theme */
+.landing-page {
+  background: #ffffff;
+  color: #202327;
+}
+
+.landing-page,
+.landing-page section,
+.landing-page .landing-nav,
+.landing-page .landing-how,
+.landing-page .landing-integrity,
+.landing-page .landing-bottom-cta {
+  background: #ffffff;
+  color: #202327;
+}
+
+.landing-page .landing-feature,
+.landing-page .landing-step-card,
+.landing-page .integrity-card {
+  background: #ffffff;
+  color: #202327;
+  border-color: #c7ccd1;
+}
+
+.landing-page h1,
+.landing-page h2,
+.landing-page h3,
+.landing-page .landing-brand,
+.landing-page .landing-links a {
+  color: #202327;
+}
+
+.landing-page p,
+.landing-page .landing-footer {
+  color: #71777d;
+}
+
+.landing-page .landing-cta {
+  background: #202327;
+  color: #ffffff;
+  border: 1px solid #202327;
+}
+
+.landing-page .landing-signin,
+.landing-page .landing-secondary {
+  background: #ffffff;
+  color: #202327;
+  border: 1px solid #71777d;
+}
+
+.landing-page .landing-step-icon,
+.landing-page .integrity-icon,
+.landing-page .landing-integrity-mark {
+  background: #f0f1f2;
+  color: #202327;
+}
+
+.landing-page .landing-step-card:hover,
+.landing-page .landing-feature:hover,
+.landing-page .integrity-card:hover {
+  background: #f7f8f9;
+  border-color: #71777d;
+}
+
+.landing-page .landing-footer {
+  background: #ffffff;
+  border-top: 1px solid #e1e4e7;
+}
+
+
+/* Remove orange hover colors — Chrome & Nickel theme */
+
+/* Navigation links */
+.landing-page .landing-links a:hover,
+.landing-page .landing-nav a:hover {
+  color: #71777d;
+}
+
+/* Navigation underline */
+.landing-page .landing-links a::after,
+.landing-page .landing-nav a::after {
+  background: #71777d;
+}
+
+/* Feature, How It Works and Security cards */
+.landing-page .landing-feature:hover,
+.landing-page .landing-step-card:hover,
+.landing-page .integrity-card:hover {
+  border-color: #a9afb6;
+  background: #f5f6f7;
+  box-shadow: 0 12px 28px rgba(32, 35, 39, 0.08);
+}
+
+/* Step card top highlight */
+.landing-page .landing-step-card::before,
+.landing-page .integrity-card::before {
+  background: #a9afb6;
+}
+
+/* Step icons */
+.landing-page .landing-step-icon,
+.landing-page .integrity-icon {
+  background: #eceff1;
+  color: #34393f;
+}
+
+/* Step numbers and links */
+.landing-page .landing-step-number,
+.landing-page .landing-step-link {
+  color: #555b62;
+}
+
+/* Buttons */
+.landing-page .landing-cta:hover,
+.landing-page .landing-signin:hover,
+.landing-page .landing-secondary:hover,
+.landing-page .landing-bottom-cta button:hover {
+  border-color: #71777d;
+  box-shadow: 0 6px 18px rgba(32, 35, 39, 0.12);
+}
+
+/* General landing-page links */
+.landing-page a:hover {
+  color: #555b62;
+}
+
+/* Keyboard focus */
+.landing-page a:focus-visible,
+.landing-page button:focus-visible {
+  outline-color: #71777d;
+}
+
+
+/* KaasuPay brand K — monochrome chrome theme */
+.landing-page .landing-brand,
+.landing-page .landing-brand span {
+  color: #202327 !important;
+}
+
+/* Create Account and Get Started buttons */
+.landing-page .landing-cta,
+.landing-page .landing-bottom-cta .landing-cta {
+  background: #202327 !important;
+  color: #ffffff !important;
+  border: 1px solid #202327 !important;
+}
+
+/* Remove orange hover effects from CTA buttons */
+.landing-page .landing-cta:hover,
+.landing-page .landing-bottom-cta .landing-cta:hover,
+.landing-page .landing-signin:hover,
+.landing-page .landing-secondary:hover {
+  background: #e5e7e9 !important;
+  color: #202327 !important;
+  border-color: #71777d !important;
+  box-shadow: 0 6px 18px rgba(32, 35, 39, 0.12) !important;
+}
+
+/* Remove orange from general landing page hover effects */
+.landing-page a:hover,
+.landing-page .landing-step-number,
+.landing-page .landing-step-link {
+  color: #71777d !important;
+}
+
+/* Metallic gray underline */
+.landing-page .landing-links a::after,
+.landing-page .landing-nav a::after {
+  background: #a9afb6 !important;
+}
+
+/* Gray keyboard focus */
+.landing-page button:focus-visible,
+.landing-page a:focus-visible {
+  outline-color: #71777d !important;
+}
+
+/* Change only the K logo square background */
+.landing-brand-mark {
+  background-color: #C7CCD1 !important;
+}
+/* Change only the square behind the K logo */
+.brand-icon {
+  background-color: #8B7355 !important; /* muted brown */
+  color: #f2eeee !important;           /* keep K black */
+}
+/* KaasuPay K logo square — brown theme */
+.app-layout .sidebar .brand .brand-icon {
+  background: #8B7355 !important;
+  background-image: none !important;
+  color: #f6f2f2 !important;
+  box-shadow: none !important;
+}
+
+/* Force the K logo letter to white */
+.landing-page .landing-logo {
+  background: #8B7355 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  opacity: 1 !important;
+}
+
+/* Footer brand name — slightly larger */
+.landing-page .auth-brand-name {
+  font-size: 1.7rem !important;
+  font-weight: 750;
+}
+
+.landing-page .auth-brand-dot {
+  color: #8B7355 !important;
+  font-size: 1.7rem !important;
+  font-weight: 750;
+}
+/* Force KaasuPay brand dot to brown */
+.landing-page .landing-brand .landing-brand-text .auth-brand-dot {
+  color: #8B4513 !important;
+  -webkit-text-fill-color: #8B4513 !important;
+  opacity: 1 !important;
+}
+@media (max-width: 768px) {
+  .landing-nav .landing-links,
+  .landing-nav .landing-actions {
+    display: none;
+  }
+}
+
+
+/* Responsive KaasuPay navigation */
+
+.landing-menu-toggle,
+.mobile-nav-actions {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .landing-page .landing-nav {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: #ffffff;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .landing-page .landing-menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border: 1px solid #d6d0c7;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #202327;
+    font-size: 24px;
+    cursor: pointer;
+  }
+
+  .landing-page .landing-links {
+    display: none;
+    flex: 0 0 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 8px 0;
+  }
+
+  .landing-page .landing-links.mobile-open {
+    display: flex;
+  }
+
+  .landing-page .landing-links > a {
+    padding: 13px 8px;
+  }
+
+  .landing-page .desktop-nav-actions {
+    display: none;
+  }
+
+  .landing-page .mobile-nav-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 8px;
+  }
+
+  .landing-page .mobile-nav-actions button {
+    width: 100%;
+  }
+}
+
+@media (min-width: 769px) {
+  .landing-page .landing-menu-toggle,
+  .landing-page .mobile-nav-actions {
+    display: none;
+  }
+}
+
+/* Keep the KaasuPay navbar visible while scrolling */
+.landing-nav {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  width: 100%;
+  background: #ffffff;
+}
+
+/* Keep the brand visible */
+.landing-brand {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Ensure the navigation stays above page content */
+.landing-links,
+.landing-nav-actions,
+.landing-menu-toggle {
+  z-index: 1001;
+}
+
+.landing-page .landing-menu-toggle:hover,
+.landing-page .landing-menu-toggle:focus,
+.landing-page .landing-menu-toggle:active {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.landing-wallet-card p,
+.landing-wallet-card h2 {
+  color: #ffffff;
+}
+
+.landing-page .landing-links a {
+  color: inherit;
+}
+
+.landing-page .landing-links a {
+  color: #8B4513 !important;
+  font-weight: 700 !important;
+}

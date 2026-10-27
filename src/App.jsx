@@ -1,6 +1,7 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import React,{ Fragment, useEffect, useRef, useState } from "react";
 import "./App.css";
 import { apiUrl } from "./api";
+
 
 function App() {
   const [activePage, setActivePage] = useState("Dashboard");
@@ -29,6 +30,7 @@ useEffect(() => {
     () => sessionStorage.getItem("kaasupay_token") || ""
   );
   const [authMode, setAuthMode] = useState("signin");
+  const [showAuthScreen, setShowAuthScreen] = useState(false);
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [user, setUser] = useState(null);
@@ -304,20 +306,51 @@ async function refreshWalletData() {
   }
 }
 
-  if (!token) {
+if (!token) {
+  if (showAuthScreen) {
     return (
-      <AuthScreen
-        mode={authMode}
-        setMode={(mode) => {
-          setAuthMode(mode);
-          setAuthError("");
-        }}
-        onSubmit={handleAuth}
-        error={authError}
-        loading={authLoading}
-      />
+      <>
+        <button
+          type="button"
+          className="back-to-overview"
+          onClick={() => {
+            setShowAuthScreen(false);
+            setAuthError("");
+          }}
+        >
+          ← Back to Overview
+        </button>
+
+        <AuthScreen
+          mode={authMode}
+          setMode={(mode) => {
+            setAuthMode(mode);
+            setAuthError("");
+          }}
+          onSubmit={handleAuth}
+          error={authError}
+          loading={authLoading}
+        />
+      </>
     );
   }
+
+  return (
+    <LandingPage
+      onSignIn={() => {
+        setAuthMode("signin");
+        setAuthError("");
+        setShowAuthScreen(true);
+      }}
+      onCreateAccount={() => {
+        setAuthMode("signup");
+        setAuthError("");
+        setShowAuthScreen(true);
+      }}
+    />
+  );
+}
+
 
   function navigate(page) {
     setActivePage(page);
@@ -718,6 +751,316 @@ async function refreshWalletData() {
   );
 }
 
+
+function LandingPage({ onSignIn, onCreateAccount }) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  return (
+    <div className="landing-page">
+      <header className="landing-nav">
+  <a className="landing-brand" href="#overview">
+    <span className="landing-logo">K</span>
+    <span className="landing-brand-text">
+      <span className="auth-brand-name">kaasupay</span>
+      <span className="auth-brand-dot">.</span>
+    </span>
+  </a>
+
+  <nav className={`landing-links ${mobileMenuOpen ? "mobile-open" : ""}`}>
+    <a href="#overview" onClick={() => setMobileMenuOpen(false)}>Overview</a>
+    <a href="#features" onClick={() => setMobileMenuOpen(false)}>Features</a>
+    <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)}>How It Works</a>
+    <a href="#integrity" onClick={() => setMobileMenuOpen(false)}>Integrity</a>
+
+    <div className="mobile-nav-actions">
+      <button className="landing-signin" onClick={() => { setMobileMenuOpen(false); onSignIn(); }}>
+        Sign In
+      </button>
+      <button className="landing-cta" onClick={() => { setMobileMenuOpen(false); onCreateAccount(); }}>
+        Create Account
+      </button>
+    </div>
+  </nav>
+
+  <div className="landing-nav-actions desktop-nav-actions">
+    <button className="landing-signin" onClick={onSignIn}>Sign In</button>
+    <button className="landing-cta" onClick={onCreateAccount}>Create Account</button>
+  </div>
+
+  <button
+    className="landing-menu-toggle"
+    type="button"
+    aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+    aria-expanded={mobileMenuOpen}
+    onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+  >
+    <span>{mobileMenuOpen ? "✕" : "☰"}</span>
+  </button>
+</header>
+
+      <main>
+        <section className="landing-hero" id="overview">
+          <div className="landing-hero-copy">
+            <span className="landing-eyebrow">
+              YOUR MONEY, YOUR CONTROL
+            </span>
+
+            <h1>
+              A simpler way to
+              <br />
+              manage your <span>money.</span>
+            </h1>
+
+            <p>
+              Manage your digital wallet, add money, transfer funds
+              to other users, and keep track of your transactions
+              from one place.
+            </p>
+
+            <div className="landing-hero-actions">
+              <button className="landing-cta" onClick={onCreateAccount}>
+                Get Started →
+              </button>
+              <button className="landing-secondary" onClick={onSignIn}>
+                Sign In
+              </button>
+            </div>
+
+            <div className="landing-trust-note">
+              <span>✓</span> Wallet activity in one place
+              <span>✓</span> Transaction history
+            </div>
+          </div>
+
+          <div className="landing-wallet-visual">
+            <div className="landing-orbit landing-orbit-one" />
+            <div className="landing-orbit landing-orbit-two" />
+
+            <div className="landing-wallet-card">
+              <div className="landing-wallet-top">
+                <span className="landing-logo">K</span>
+                <span>KAASUPAY WALLET</span>
+                <span className="landing-card-dot">●</span>
+              </div>
+
+              <p>Digital wallet</p>
+              <h2>Money management, simplified.</h2>
+
+              <div className="landing-card-bottom">
+                <span>Secure access</span>
+                <span>•••• 2026</span>
+              </div>
+            </div>
+
+            <div className="landing-floating-card landing-float-top">
+              <span className="landing-float-icon">↗</span>
+              <div>
+                <strong>Easy transfers</strong>
+                <small>Send to another user</small>
+              </div>
+            </div>
+
+            <div className="landing-floating-card landing-float-bottom">
+              <span className="landing-float-icon">↔</span>
+              <div>
+                <strong>Track activity</strong>
+                <small>View your transactions</small>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="landing-section" id="features">
+          <div className="landing-section-heading">
+            <span className="landing-eyebrow">WHAT YOU CAN DO</span>
+            <h2>Everything you need in one wallet.</h2>
+            <p>
+              Access your wallet tools through a simple, organised
+              dashboard.
+            </p>
+          </div>
+
+          <div className="landing-feature-grid">
+            <article className="landing-feature">
+              <span className="landing-feature-icon">₹</span>
+              <h3>Wallet Overview</h3>
+              <p>Check your available balance and wallet activity.</p>
+            </article>
+
+            <article className="landing-feature">
+              <span className="landing-feature-icon">＋</span>
+              <h3>Add Money</h3>
+              <p>Create a top-up order and use available payment options.</p>
+            </article>
+
+            <article className="landing-feature">
+              <span className="landing-feature-icon">↗</span>
+              <h3>Transfer Funds</h3>
+              <p>Send money to another KaasuPay user.</p>
+            </article>
+
+            <article className="landing-feature">
+              <span className="landing-feature-icon">↔</span>
+              <h3>Transaction History</h3>
+              <p>Review your recorded wallet transactions.</p>
+            </article>
+          </div>
+        </section>
+
+        
+<section className="landing-how" id="how-it-works">
+  <div className="landing-section-heading">
+    <span className="landing-eyebrow">HOW IT WORKS</span>
+    <h2>Send money in three simple steps.</h2>
+    <p>
+      From choosing your recipient to receiving a transaction
+      receipt, follow a clear step-by-step process.
+    </p>
+  </div>
+
+  <div className="landing-steps">
+    <article className="landing-step-card">
+      <div className="landing-step-top">
+        <span className="landing-step-number">01</span>
+        <span className="landing-step-icon">👤</span>
+      </div>
+
+      <h3>Select Recipient & Amount</h3>
+      <p>
+        Choose the intended recipient and enter the amount
+        you want to transfer.
+      </p>
+
+      <div className="landing-step-details">
+        <div>✓ Select the recipient</div>
+        <div>✓ Enter the transfer amount</div>
+        <div>✓ Review the details</div>
+      </div>
+
+      <span className="landing-step-link">
+        Choose recipient <span>→</span>
+      </span>
+    </article>
+
+    <article className="landing-step-card">
+      <div className="landing-step-top">
+        <span className="landing-step-number">02</span>
+        <span className="landing-step-icon">🔐</span>
+      </div>
+
+      <h3>Choose & Authorize</h3>
+      <p>
+        Review the available transaction options and
+        authorize the transfer using the required verification.
+      </p>
+
+      <div className="landing-step-details">
+        <div>✓ Review transaction options</div>
+        <div>✓ Verify the transfer details</div>
+        <div>✓ Authorize when prompted</div>
+      </div>
+
+      <span className="landing-step-link">
+        Verify details <span>→</span>
+      </span>
+    </article>
+
+    <article className="landing-step-card">
+      <div className="landing-step-top">
+        <span className="landing-step-number">03</span>
+        <span className="landing-step-icon">🧾</span>
+      </div>
+
+      <h3>Transfer & Receipt</h3>
+      <p>
+        Check the transfer result and view the transaction
+        reference when the server returns it.
+      </p>
+
+      <div className="landing-step-details">
+        <div>✓ Check the transaction status</div>
+        <div>✓ Review the transfer record</div>
+        <div>✓ Keep the receipt details</div>
+      </div>
+
+      <span className="landing-step-link">
+        View transaction <span>→</span>
+      </span>
+    </article>
+  </div>
+</section>
+
+
+        
+
+<section className="landing-integrity" id="integrity">
+  {/* Heading at the top */}
+  <div className="landing-section-heading">
+    <span className="landing-eyebrow">SECURITY & TRUST</span>
+    <h2>Your money deserves protection.</h2>
+    <p>
+      Designed to make everyday wallet transactions more
+      controlled, private, and secure.
+    </p>
+  </div>
+
+  {/* Three cards below the heading */}
+  <div className="integrity-grid">
+    <article className="integrity-card">
+      <div className="integrity-icon">🛡️</div>
+      <span className="integrity-label">01 · TRANSACTION CONTROL</span>
+      <h3>Daily Transfer Limit</h3>
+      <p>
+        Manage daily transfer limits to help control
+        the amount sent from your wallet.
+      </p>
+    </article>
+
+    <article className="integrity-card">
+      <div className="integrity-icon">🔐</div>
+      <span className="integrity-label">02 · AUTHORIZATION</span>
+      <h3>Payment PIN</h3>
+      <p>
+        Add a verification step to help authorize
+        wallet transactions securely.
+      </p>
+    </article>
+
+    <article className="integrity-card">
+      <div className="integrity-icon">🏦</div>
+      <span className="integrity-label">03 · DATA PRIVACY</span>
+      <h3>Encrypted Bank Details</h3>
+      <p>
+        Protect sensitive banking information through
+        appropriate encryption and secure data handling.
+      </p>
+    </article>
+  </div>
+</section>
+
+
+
+        <section className="landing-bottom-cta">
+          <h2>Ready to get started?</h2>
+          <p>Create your account to access your KaasuPay wallet.</p>
+          <button className="landing-cta" onClick={onCreateAccount}>
+            Create Account →
+          </button>
+        </section>
+      </main>
+
+      <footer className="landing-footer">
+  <a className="landing-brand" href="#overview">
+    <span className="landing-logo">K</span>
+    <span className="landing-brand-text">
+      <span className="auth-brand-name">kaasupay</span>
+      <span className="auth-brand-dot">.</span>
+    </span>
+  </a>
+  <span>© 2026 KaasuPay</span>
+</footer>
+    </div>
+  );
+}
 
 
 function AddMoneyForm({ token ,onSuccess}) {
