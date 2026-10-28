@@ -2401,6 +2401,7 @@ function BankAccountsPage({ token }) {
   );
 }
 
+
 function WithdrawPage({ token }) {
   const [accounts, setAccounts] = useState([]);
   const [bankAccountId, setBankAccountId] = useState("");
@@ -2411,60 +2412,247 @@ function WithdrawPage({ token }) {
 
   useEffect(() => {
     let cancelled = false;
+
     async function load() {
       try {
-        const response = await fetch(apiUrl("/api/v1/wallet/bank-accounts"), {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await fetch(
+          apiUrl("/api/v1/wallet/bank-accounts"),
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Could not load bank accounts.");
+
+        if (!response.ok) {
+          throw new Error(data.error || "Could not load bank accounts.");
+        }
+
         if (!cancelled) {
           const list = data.bankAccounts || [];
           setAccounts(list);
           setBankAccountId(current => current || list[0]?.id || "");
         }
       } catch (error) {
-        if (!cancelled) { setIsError(true); setMessage(error.message || "Could not load bank accounts."); }
-      } finally { if (!cancelled) setLoading(false); }
+        if (!cancelled) {
+          setIsError(true);
+          setMessage(error.message || "Could not load bank accounts.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
+
     load();
     return () => { cancelled = true; };
   }, [token]);
 
-  async function requestWithdrawal(event) {
+  function requestWithdrawal(event) {
     event.preventDefault();
-    setIsError(false);
-    setMessage("Withdrawal submission is paused until the payout worker and review flow are confirmed safe. No request was sent and no balance was debited.");
     setIsError(true);
+    setMessage(
+      "Withdrawals are paused while payout processing and review are verified. No request was sent and no balance was debited."
+    );
   }
 
   const rupees = Number(amount);
-  const validAmount = Number.isInteger(rupees) && rupees >= 100 && rupees <= 25000;
+  const validAmount =
+    Number.isInteger(rupees) && rupees >= 100 && rupees <= 25000;
+
+  const selectedAccount = accounts.find(
+    account => account.id === bankAccountId
+  );
+
   return (
-    <section className="content-card action-card">
-      <div className="section-heading"><div><h2>Withdraw Money</h2><p>Prepare a withdrawal request to a saved bank account.</p></div></div>
-      <div className="notice" role="note">Safety hold: withdrawal submission is temporarily disabled while the payout worker and review status are verified. This prevents accidental wallet debits or real payouts.</div>
-      {loading ? <p className="form-help">Loading bank accounts...</p> : accounts.length === 0 ? (
-        <div><p className="form-help">Add a bank account before preparing a withdrawal.</p></div>
-      ) : (
-        <form onSubmit={requestWithdrawal} className="form-stack">
-          <label>Bank account
-            <select value={bankAccountId} onChange={e => setBankAccountId(e.target.value)} required>
-              {accounts.map(account => <option key={account.id} value={account.id}>{account.holderName} — {account.accountNumber} ({account.ifsc})</option>)}
-            </select>
-          </label>
-          <label>Amount (₹100–₹25,000)
-            <input type="number" min="100" max="25000" step="1" value={amount} onChange={e => setAmount(e.target.value)} required />
-          </label>
-          <p className="form-help">Backend amount is represented in paise. A request would debit the wallet and enter PENDING status; PENDING does not mean the bank has received the money.</p>
-          <button className="primary-button" type="submit" disabled={!bankAccountId || !validAmount}>Prepare withdrawal (temporarily paused)</button>
-        </form>
+    <section className="content-card action-card withdraw-page">
+      <div className="withdraw-hero">
+        <div className="withdraw-hero-icon">
+          <span aria-hidden="true">↗</span>
+        </div>
+        <div>
+          <p className="withdraw-eyebrow">WALLET SERVICES</p>
+          <h2>Withdraw money</h2>
+          <p>Transfer funds from your wallet to your saved bank account.</p>
+        </div>
+      </div>
+
+      <div className="withdraw-safety" role="note">
+        <span className="withdraw-safety-icon" aria-hidden="true">⌑</span>
+        <div>
+          <strong>Withdrawals temporarily paused</strong>
+          <p>
+            Your funds are protected while payout processing and
+            the review flow are verified.
+          </p>
+        </div>
+        <span className="withdraw-status-pill">On hold</span>
+      </div>
+
+      <div className="withdraw-content">
+        <div className="withdraw-main">
+          <div className="withdraw-panel">
+            <div className="withdraw-panel-heading">
+              <div>
+                <span className="withdraw-step">01</span>
+                <h3>Choose bank account</h3>
+              </div>
+              <span className="withdraw-heading-icon" aria-hidden="true">▤</span>
+            </div>
+
+            {loading ? (
+              <p className="form-help">Loading bank accounts...</p>
+            ) : accounts.length === 0 ? (
+              <p className="form-help">
+                Add a bank account before preparing a withdrawal.
+              </p>
+            ) : (
+              <>
+                <label className="withdraw-label" htmlFor="withdraw-bank">
+                  Saved bank account
+                </label>
+
+                <select
+                  id="withdraw-bank"
+                  className="withdraw-input"
+                  value={bankAccountId}
+                  onChange={event => setBankAccountId(event.target.value)}
+                  required
+                >
+                  {accounts.map(account => (
+                    <option key={account.id} value={account.id}>
+                      {account.holderName} — {account.accountNumber} ({account.ifsc})
+                    </option>
+                  ))}
+                </select>
+
+                {selectedAccount && (
+                  <div className="withdraw-bank-card">
+                    <div className="withdraw-bank-symbol" aria-hidden="true">
+                      ▤
+                    </div>
+                    <div className="withdraw-bank-info">
+                      <strong>{selectedAccount.holderName}</strong>
+                      <span>Account ending in{" "}
+                        {String(selectedAccount.accountNumber).slice(-4)}
+                      </span>
+                      <span>{selectedAccount.ifsc}</span>
+                    </div>
+                    <span className="withdraw-verified">Saved</span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="withdraw-panel">
+            <div className="withdraw-panel-heading">
+              <div>
+                <span className="withdraw-step">02</span>
+                <h3>Enter withdrawal amount</h3>
+              </div>
+              <span className="withdraw-heading-icon" aria-hidden="true">₹</span>
+            </div>
+
+            <form onSubmit={requestWithdrawal}>
+              <label className="withdraw-label" htmlFor="withdraw-amount">
+                Amount in INR
+              </label>
+
+              <div className="withdraw-amount-input">
+                <span aria-hidden="true">₹</span>
+                <input
+                  id="withdraw-amount"
+                  type="number"
+                  min="100"
+                  max="25000"
+                  step="1"
+                  value={amount}
+                  onChange={event => setAmount(event.target.value)}
+                  required
+                  disabled={loading || accounts.length === 0}
+                />
+                <span className="withdraw-currency">INR</span>
+              </div>
+
+              <div className="withdraw-amount-range">
+                <span>Minimum ₹100</span>
+                <span>Maximum ₹25,000</span>
+              </div>
+
+              <div className="withdraw-processing-note">
+                <span aria-hidden="true">ⓘ</span>
+                <p>
+                  A withdrawal request would debit your wallet and enter
+                  PENDING status. This does not confirm receipt by the bank.
+                </p>
+              </div>
+
+              <button
+                className="primary-button withdraw-submit"
+                type="submit"
+                disabled
+              >
+                <span aria-hidden="true">⌑</span>
+                Withdrawals temporarily paused
+              </button>
+
+              <p className="withdraw-disabled-caption">
+                Submissions are disabled until payout processing is verified.
+              </p>
+            </form>
+          </div>
+        </div>
+
+        <aside className="withdraw-sidebar">
+          <div className="withdraw-summary-card">
+            <span className="withdraw-summary-icon" aria-hidden="true">✓</span>
+            <h3>Security first</h3>
+            <p>
+              Withdrawal requests remain disabled while the payout worker
+              and review process are being checked.
+            </p>
+            <div className="withdraw-summary-divider" />
+            <div className="withdraw-summary-row">
+              <span>Request submission</span>
+              <strong>Paused</strong>
+            </div>
+            <div className="withdraw-summary-row">
+              <span>Balance debit by this page</span>
+              <strong>Disabled</strong>
+            </div>
+          </div>
+
+          <div className="withdraw-help-card">
+            <strong>Before you withdraw</strong>
+            <p>
+              Check your saved bank details. Once withdrawals are safely
+              enabled, check the request status in Withdrawal History.
+            </p>
+          </div>
+        </aside>
+      </div>
+
+      {message && (
+        <p
+          className={isError ? "form-help error-text" : "form-help"}
+          role="status"
+        >
+          {message}
+        </p>
       )}
-      {message && <p className={isError ? "form-help error-text" : "form-help"} role="status">{message}</p>}
-      <button className="light-button" type="button" onClick={() => window.location.reload()}>Refresh page</button>
+
+      <div className="withdraw-footer">
+        <span>Secure wallet operations</span>
+        <button
+          className="light-button"
+          type="button"
+          onClick={() => window.location.reload()}
+        >
+          ↻ Refresh page
+        </button>
+      </div>
     </section>
   );
 }
+
 
 function WithdrawalHistoryPage({ token }) {
   const [withdrawals, setWithdrawals] = useState([]);
