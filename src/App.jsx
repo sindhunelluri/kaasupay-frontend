@@ -1063,7 +1063,8 @@ function LandingPage({ onSignIn, onCreateAccount }) {
 }
 
 
-function AddMoneyForm({ token ,onSuccess}) {
+
+function AddMoneyForm({ token, onSuccess }) {
   const [amount, setAmount] = useState("10");
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -1071,6 +1072,7 @@ function AddMoneyForm({ token ,onSuccess}) {
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("razorpay");
+  const [showOrderModal, setShowOrderModal] = useState(false);
 
   useEffect(() => {
     if (window.Razorpay) return;
@@ -1078,26 +1080,41 @@ function AddMoneyForm({ token ,onSuccess}) {
     const existingScript = document.querySelector(
       'script[src="https://checkout.razorpay.com/v1/checkout.js"]'
     );
+
     if (existingScript) return;
 
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
     script.async = true;
+
+    script.onerror = () => {
+      setMessage("Unable to load Razorpay Checkout. Please refresh and try again.");
+    };
+
     document.body.appendChild(script);
+
+    return () => {
+      // Keep the script available for other components using Razorpay.
+    };
   }, []);
 
   function selectAmount(value) {
     setAmount(String(value));
     setOrder(null);
+    setShowOrderModal(false);
     setMessage("");
     setIsSuccess(false);
   }
 
   async function createOrder(event) {
     event.preventDefault();
+
+    if (loading || paying) return;
+
     setMessage("");
     setIsSuccess(false);
     setOrder(null);
+    setShowOrderModal(false);
 
     const rupees = Number(amount);
 
@@ -1114,33 +1131,46 @@ function AddMoneyForm({ token ,onSuccess}) {
     setLoading(true);
 
     try {
-      const response = await fetch(apiUrl("/api/v1/wallet/add-money/order"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ amount: rupees * 100 }),
-      });
+      const response = await fetch(
+        apiUrl("/api/v1/wallet/add-money/order"),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ amount: rupees * 100 }),
+        }
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Could not create the payment order.");
+        throw new Error(
+          data.error || "Could not create the payment order."
+        );
       }
 
-      if (!data.orderId || !data.keyId || !data.currency) {
-        throw new Error("The server returned incomplete payment order details.");
+      if (
+        !data.orderId ||
+        !data.keyId ||
+        !data.currency ||
+        !Number.isFinite(Number(data.amount))
+      ) {
+        throw new Error(
+          "The server returned incomplete payment order details."
+        );
       }
 
       setOrder({
         orderId: data.orderId,
-        amount: data.amount,
+        amount: Number(data.amount),
         currency: data.currency,
         keyId: data.keyId,
       });
 
-      setMessage("Payment order created successfully.");
+      setMessage("");
+      setShowOrderModal(true);
     } catch (error) {
       setMessage(error.message || "Unable to create the payment order.");
     } finally {
@@ -1149,10 +1179,15 @@ function AddMoneyForm({ token ,onSuccess}) {
   }
 
   async function payWithRazorpay() {
-    if (!order || paying) return;
+    if (!order || paying || isSuccess) return;
 
     if (!window.Razorpay) {
       setMessage("Razorpay is still loading. Please try again.");
+      return;
+    }
+
+    if (!token) {
+      setMessage("Your session is missing. Please sign in again.");
       return;
     }
 
@@ -1167,6 +1202,7 @@ function AddMoneyForm({ token ,onSuccess}) {
         name: "KaasuPay",
         description: "Wallet top-up",
         order_id: order.orderId,
+        theme: { color: "#292929" },
 
         handler: async function (payment) {
           setMessage("Payment received. Verifying with the server...");
@@ -1196,20 +1232,31 @@ function AddMoneyForm({ token ,onSuccess}) {
               );
             }
 
+            // Verification succeeded.
             setIsSuccess(true);
-            await onSuccess?.();
+            setShowOrderModal(false);
+            setOrder(null);
 
-            let successMessage =
-              result.message || "Payment verified successfully.";
+            let successMessage = "Money added successfully!";
 
             if (Number.isInteger(result.walletBalance)) {
               successMessage +=
-                ` Wallet balance: ₹${(result.walletBalance / 100).toFixed(2)}.`;
-            } else {
-              successMessage += " Check your updated wallet balance.";
+                ` Your wallet balance is ₹${(
+                  result.walletBalance / 100
+                ).toLocaleString("en-IN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}.`;
             }
 
             setMessage(successMessage);
+
+            // Refresh wallet information, if the parent provides this callback.
+            try {
+              await onSuccess?.();
+            } catch (refreshError) {
+              console.error("Wallet refresh failed:", refreshError);
+            }
           } catch (error) {
             setMessage(
               `${error.message} Do not pay again immediately. Check the payment status first.`
@@ -1227,14 +1274,13 @@ function AddMoneyForm({ token ,onSuccess}) {
             );
           },
         },
-
-        theme: { color: "#292929" },
       });
 
       checkout.on("payment.failed", function (event) {
         setMessage(
           "Payment failed: " +
-            (event.error?.description || "Please check the payment status.")
+            (event.error?.description ||
+              "Please check the payment status.")
         );
         setPaying(false);
       });
@@ -1258,6 +1304,7 @@ function AddMoneyForm({ token ,onSuccess}) {
         </div>
       </div>
 
+      {/* Add Money form */}
       <div className="add-money-grid">
         <div className="add-money-panel">
           <form onSubmit={createOrder}>
@@ -1350,108 +1397,142 @@ function AddMoneyForm({ token ,onSuccess}) {
             </p>
           )}
         </div>
-
-        <aside className="add-money-info-panel">
-          <div className="add-money-info-heading">
-            <div className="add-money-info-icon">✓</div>
-            <div>
-              <h3>Secure top-up</h3>
-              <p>How it works</p>
-            </div>
-          </div>
-
-          <div className="add-money-steps">
-            <div className="add-money-step">
-              <span>1</span>
-              <div>
-                <strong>Create an order</strong>
-                <p>Choose how much you want to add.</p>
-              </div>
-            </div>
-            <div className="add-money-step">
-              <span>2</span>
-              <div>
-                <strong>Complete payment</strong>
-                <p>Continue through Razorpay Checkout.</p>
-              </div>
-            </div>
-            <div className="add-money-step">
-              <span>3</span>
-              <div>
-                <strong>Verify securely</strong>
-                <p>Your server verifies the payment.</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="add-money-info-note">
-            <span>i</span>
-            <p>Creating an order does not add money to your wallet.</p>
-          </div>
-        </aside>
       </div>
 
-      {order && (
-        <div className="payment-order-result add-money-order">
-          <div className="add-money-order-heading">
-            <div>
-              <h3>Payment order details</h3>
-              <p>Review your order before continuing.</p>
-            </div>
-            <span className="add-money-order-status">
-              {isSuccess ? "Verified" : "Awaiting payment"}
-            </span>
+      {/* Secure top-up now appears below the form */}
+      <aside className="add-money-info-panel">
+        <div className="add-money-info-heading">
+          <div className="add-money-info-icon">✓</div>
+          <div>
+            <h3>Secure top-up</h3>
+            <p>How it works</p>
           </div>
+        </div>
 
-          <div className="add-money-order-summary">
-            <span>Order amount</span>
-            <strong>
-              ₹{(Number(order.amount) / 100).toLocaleString("en-IN", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </strong>
-          </div>
-
-          <div className="add-money-order-fields">
+        <div className="add-money-steps">
+          <div className="add-money-step">
+            <span>1</span>
             <div>
-              <span>Order ID</span>
-              <code>{order.orderId}</code>
-            </div>
-            <div>
-              <span>Currency</span>
-              <strong>{order.currency}</strong>
-            </div>
-            <div>
-              <span>Public key ID</span>
-              <code>{order.keyId}</code>
+              <strong>Create an order</strong>
+              <p>Choose how much you want to add.</p>
             </div>
           </div>
 
-          <details className="add-money-raw-details">
-            <summary>View raw order JSON</summary>
-            <pre className="payment-order-json">
-              {JSON.stringify(order, null, 2)}
-            </pre>
-          </details>
+          <div className="add-money-step">
+            <span>2</span>
+            <div>
+              <strong>Complete payment</strong>
+              <p>Continue through Razorpay Checkout.</p>
+            </div>
+          </div>
 
-          <button
-            className="primary-button full-button add-money-pay"
-            type="button"
-            onClick={payWithRazorpay}
-            disabled={paying || isSuccess}
+          <div className="add-money-step">
+            <span>3</span>
+            <div>
+              <strong>Verify securely</strong>
+              <p>Your server verifies the payment.</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="add-money-info-note">
+          <span>i</span>
+          <p>Creating an order does not add money to your wallet.</p>
+        </div>
+      </aside>
+
+      {/* Centered payment order popup */}
+      {order && showOrderModal && (
+        <div
+          className="order-modal-overlay"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowOrderModal(false);
+            }
+          }}
+        >
+          <div
+            className="order-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="order-modal-title"
           >
-            {paying
-              ? "Processing payment..."
-              : isSuccess
-                ? "Payment Verified ✓"
-                : "Pay with Razorpay →"}
-          </button>
+            <button
+              type="button"
+              className="order-modal-close"
+              onClick={() => setShowOrderModal(false)}
+              aria-label="Close order details"
+            >
+              ×
+            </button>
+
+            <div className="add-money-order-heading">
+              <div>
+                <h3 id="order-modal-title">Payment Order Details</h3>
+                <p>Review your order before continuing.</p>
+              </div>
+
+              <span className="add-money-order-status">
+                Awaiting payment
+              </span>
+            </div>
+
+            <div className="add-money-order-summary">
+              <span>Order amount</span>
+              <strong>
+                ₹{(order.amount / 100).toLocaleString("en-IN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </strong>
+            </div>
+
+            <div className="add-money-order-fields">
+              <div>
+                <span>Order ID</span>
+                <code>{order.orderId}</code>
+              </div>
+              <div>
+                <span>Currency</span>
+                <strong>{order.currency}</strong>
+              </div>
+              <div>
+                <span>Public key ID</span>
+                <code>{order.keyId}</code>
+              </div>
+            </div>
+
+            <details className="add-money-raw-details">
+              <summary>View raw order JSON</summary>
+              <pre className="payment-order-json">
+                {JSON.stringify(order, null, 2)}
+              </pre>
+            </details>
+
+            <button
+              className="primary-button full-button add-money-pay"
+              type="button"
+              onClick={payWithRazorpay}
+              disabled={paying}
+            >
+              {paying ? "Processing payment..." : "Pay with Razorpay →"}
+            </button>
+
+            <button
+              className="light-button full-button order-modal-cancel"
+              type="button"
+              onClick={() => setShowOrderModal(false)}
+              disabled={paying}
+            >
+              Close
+            </button>
+          </div>
         </div>
       )}
     </section>
   );
 }
+
 
 
 
@@ -2237,7 +2318,8 @@ function BankAccountsPage({ token }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
-
+  const [showPinConfirmation, setShowPinConfirmation] = useState(false);
+  const [paymentPin, setPaymentPin] = useState("");
   const styles = {
     page: { display: "grid", gap: 22 },
     hero: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap", padding: "24px 26px", borderRadius: 20, background: "linear-gradient(125deg, #fff7ed 0%, #fff 60%, #fef3c7 100%)", border: "1px solid #fed7aa" },
@@ -2409,6 +2491,9 @@ function WithdrawPage({ token }) {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
+  const [showPinConfirmation, setShowPinConfirmation] = useState(false);
+  const [paymentPin, setPaymentPin] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -2445,14 +2530,75 @@ function WithdrawPage({ token }) {
     return () => { cancelled = true; };
   }, [token]);
 
-  function requestWithdrawal(event) {
-    event.preventDefault();
+  
+async function requestWithdrawal(event) {
+  event?.preventDefault();
+
+  if (submitting) return;
+
+  if (!selectedAccount || !validAmount) {
     setIsError(true);
     setMessage(
-      "Withdrawals are paused while payout processing and review are verified. No request was sent and no balance was debited."
+      "Select a bank account and enter an amount between ₹100 and ₹25,000."
     );
+    return;
   }
 
+  if (!/^\d{4,6}$/.test(paymentPin)) {
+    setIsError(true);
+    setMessage("Enter your 4–6 digit payment PIN.");
+    return;
+  }
+
+  setSubmitting(true);
+  setIsError(false);
+  setMessage("");
+
+  try {
+    const response = await fetch(
+      apiUrl("/api/v1/wallet/withdraw"),
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "Idempotency-Key": crypto.randomUUID()
+        },
+        body: JSON.stringify({
+          bankAccountId,
+          amount: Math.round(Number(amount) * 100),
+          pin: paymentPin
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.error || `Withdrawal request failed (${response.status}).`
+      );
+    }
+
+    setIsError(false);
+    setMessage(
+      `Withdrawal request accepted. Reference: ${
+        data.withdrawal?.reference || "Pending"
+      }`
+    );
+    setShowPinConfirmation(false);
+    setPaymentPin("");
+  } catch (error) {
+    setIsError(true);
+    setMessage(
+      error.message || "Could not submit the withdrawal request."
+    );
+  } finally {
+    setSubmitting(false);
+  }
+}
+
+  const WITHDRAWALS_PAUSED = true;
   const rupees = Number(amount);
   const validAmount =
     Number.isInteger(rupees) && rupees >= 100 && rupees <= 25000;
@@ -2498,48 +2644,68 @@ function WithdrawPage({ token }) {
             </div>
 
             {loading ? (
-              <p className="form-help">Loading bank accounts...</p>
-            ) : accounts.length === 0 ? (
-              <p className="form-help">
-                Add a bank account before preparing a withdrawal.
-              </p>
-            ) : (
-              <>
-                <label className="withdraw-label" htmlFor="withdraw-bank">
-                  Saved bank account
-                </label>
+  <p className="form-help">Loading bank accounts...</p>
+) : accounts.length === 0 ? (
+  <div className="withdraw-empty-state">
+    <div className="withdraw-empty-icon" aria-hidden="true">
+      ▤
+    </div>
 
-                <select
-                  id="withdraw-bank"
-                  className="withdraw-input"
-                  value={bankAccountId}
-                  onChange={event => setBankAccountId(event.target.value)}
-                  required
-                >
-                  {accounts.map(account => (
-                    <option key={account.id} value={account.id}>
-                      {account.holderName} — {account.accountNumber} ({account.ifsc})
-                    </option>
-                  ))}
-                </select>
+    <h4>No bank accounts linked</h4>
 
-                {selectedAccount && (
-                  <div className="withdraw-bank-card">
-                    <div className="withdraw-bank-symbol" aria-hidden="true">
-                      ▤
-                    </div>
-                    <div className="withdraw-bank-info">
-                      <strong>{selectedAccount.holderName}</strong>
-                      <span>Account ending in{" "}
-                        {String(selectedAccount.accountNumber).slice(-4)}
-                      </span>
-                      <span>{selectedAccount.ifsc}</span>
-                    </div>
-                    <span className="withdraw-verified">Saved</span>
-                  </div>
-                )}
-              </>
-            )}
+    <p>
+      You need at least one verified bank account to withdraw money.
+      Link a bank account to continue.
+    </p>
+
+    <button
+      type="button"
+      className="withdraw-link-account-btn"
+      onClick={() => onNavigate?.("bank-accounts")}
+    >
+      + Link Bank Account
+    </button>
+  </div>
+) : (
+  <>
+    <label className="withdraw-label" htmlFor="withdraw-bank">
+      Saved bank account
+    </label>
+
+    <select
+      id="withdraw-bank"
+      className="withdraw-input"
+      value={bankAccountId}
+      onChange={event => setBankAccountId(event.target.value)}
+      required
+    >
+      {accounts.map(account => (
+        <option key={account.id} value={account.id}>
+          {account.holderName} — {account.accountNumber} ({account.ifsc})
+        </option>
+      ))}
+    </select>
+
+    {selectedAccount && (
+      <div className="withdraw-bank-card">
+        <div className="withdraw-bank-symbol" aria-hidden="true">
+          ▤
+        </div>
+
+        <div className="withdraw-bank-info">
+          <strong>{selectedAccount.holderName}</strong>
+          <span>
+            Account ending in{" "}
+            {String(selectedAccount.accountNumber).slice(-4)}
+          </span>
+          <span>{selectedAccount.ifsc}</span>
+        </div>
+
+        <span className="withdraw-verified">Saved</span>
+      </div>
+    )}
+  </>
+)}
           </div>
 
           <div className="withdraw-panel">
@@ -2567,7 +2733,9 @@ function WithdrawPage({ token }) {
                   value={amount}
                   onChange={event => setAmount(event.target.value)}
                   required
-                  disabled={loading || accounts.length === 0}
+                  disabled={
+                    loading || accounts.length === 0
+                  }
                 />
                 <span className="withdraw-currency">INR</span>
               </div>
@@ -2586,17 +2754,22 @@ function WithdrawPage({ token }) {
               </div>
 
               <button
-                className="primary-button withdraw-submit"
-                type="submit"
-                disabled
-              >
-                <span aria-hidden="true">⌑</span>
-                Withdrawals temporarily paused
-              </button>
+  className="primary-button withdraw-submit"
+  type="button"
+  disabled={loading || !selectedAccount || !validAmount}
+  onClick={() => {
+    setPaymentPin("");
+    setShowPinConfirmation(true);
+    setMessage("");
+    setIsError(false);
+  }}
+>
+  Confirm withdrawal
+</button>
 
-              <p className="withdraw-disabled-caption">
-                Submissions are disabled until payout processing is verified.
-              </p>
+<p className="withdraw-disabled-caption">
+  Demo flow only. No withdrawal request will be submitted.
+</p>
             </form>
           </div>
         </div>
@@ -2638,6 +2811,83 @@ function WithdrawPage({ token }) {
           {message}
         </p>
       )}
+
+      
+{showPinConfirmation && (
+  <div
+    className="withdraw-modal-overlay"
+    onClick={(event) => {
+      if (event.target === event.currentTarget) {
+        setShowPinConfirmation(false);
+        setPaymentPin("");
+      }
+    }}
+  >
+    <div
+      className="withdraw-pin-confirmation"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="withdraw-pin-title"
+    >
+      <h3 id="withdraw-pin-title">Confirm withdrawal</h3>
+
+      <p>
+        Amount: ₹{Number(amount).toLocaleString("en-IN")}
+      </p>
+
+      <p>
+        Bank account ending in{" "}
+        {selectedAccount
+          ? String(selectedAccount.accountNumber).slice(-4)
+          : "—"}
+      </p>
+
+      <label
+        className="withdraw-label"
+        htmlFor="withdraw-payment-pin"
+      >
+        Enter your payment PIN
+      </label>
+
+      <input
+        id="withdraw-payment-pin"
+        className="withdraw-input"
+        type="password"
+        inputMode="numeric"
+        autoComplete="off"
+        maxLength={6}
+        value={paymentPin}
+        onChange={(event) =>
+          setPaymentPin(
+            event.target.value.replace(/\D/g, "").slice(0, 6)
+          )
+        }
+        placeholder="Enter 4–6 digit PIN"
+      />
+
+      <button
+        type="button"
+        className="primary-button"
+        disabled={submitting || !/^\d{4,6}$/.test(paymentPin)}
+        onClick={requestWithdrawal}
+      >
+        {submitting ? "Submitting..." : "Confirm PIN"}
+      </button>
+
+      <button
+        type="button"
+        className="light-button"
+        onClick={() => {
+          setShowPinConfirmation(false);
+          setPaymentPin("");
+        }}
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
+
 
       <div className="withdraw-footer">
         <span>Secure wallet operations</span>
