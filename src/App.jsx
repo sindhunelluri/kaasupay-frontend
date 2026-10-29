@@ -9,6 +9,29 @@ function App() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileContainerRef = useRef(null);
 
+  // Mobile / tablet slide-in menu
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    function onKey(event) {
+      if (event.key === "Escape") setMobileMenuOpen(false);
+    }
+    function onResize() {
+      if (window.innerWidth > 1024) setMobileMenuOpen(false);
+    }
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onResize);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    document.body.classList.toggle("menu-open", mobileMenuOpen);
+    return () => document.body.classList.remove("menu-open");
+  }, [mobileMenuOpen]);
+
 useEffect(() => {
   function handleOutsideClick(event) {
     if (
@@ -354,6 +377,7 @@ if (!token) {
 
   function navigate(page) {
     setActivePage(page);
+    setMobileMenuOpen(false);
   }
 
   const fullName = user
@@ -366,13 +390,26 @@ if (!token) {
 
   return (
     <div className="app-layout">
-      <aside className="sidebar">
+      <div
+        className={mobileMenuOpen ? "sidebar-backdrop show" : "sidebar-backdrop"}
+        onClick={() => setMobileMenuOpen(false)}
+      />
+
+      <aside className={mobileMenuOpen ? "sidebar open" : "sidebar"}>
         <div className="brand">
           <div className="brand-icon">K</div>
           <div>
             <h2>KaasuPay</h2>
             <span>Digital Wallet</span>
           </div>
+          <button
+            type="button"
+            className="sidebar-close"
+            aria-label="Close menu"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            ✕
+          </button>
         </div>
 
         <p className="menu-label">MENU</p>
@@ -480,9 +517,19 @@ if (!token) {
 
       <main className="main-content">
         <header className="topbar">
-          <div>
-            <p className="breadcrumb">Workspace / {activePage}</p>
-            <h1>{activePage}</h1>
+          <div className="topbar-left">
+            <button
+              type="button"
+              className="menu-toggle"
+              aria-label="Open menu"
+              aria-expanded={mobileMenuOpen}
+              onClick={() => setMobileMenuOpen(true)}
+            >
+              ☰
+            </button>
+            <div>
+              <p className="breadcrumb">Workspace / {activePage}</p>
+            </div>
           </div>
 
           <div className="topbar-right">
@@ -1277,13 +1324,27 @@ function AddMoneyForm({ token, onSuccess }) {
       });
 
       checkout.on("payment.failed", function (event) {
-        setMessage(
-          "Payment failed: " +
-            (event.error?.description ||
-              "Please check the payment status.")
-        );
-        setPaying(false);
-      });
+  const error = event.error || {};
+
+  // Diagnostic details for local development.
+  console.error("Razorpay payment failure:", {
+    code: error.code,
+    description: error.description,
+    source: error.source,
+    step: error.step,
+    reason: error.reason,
+    orderId: error.metadata?.order_id,
+    paymentId: error.metadata?.payment_id,
+  });
+
+  setMessage(
+    `Payment failed: ${error.description || "Unknown error"}` +
+      (error.code ? ` (Code: ${error.code})` : "") +
+      (error.reason ? ` — Reason: ${error.reason}` : "")
+  );
+
+  setPaying(false);
+});
 
       checkout.open();
     } catch (error) {
