@@ -721,7 +721,14 @@ if (!token) {
 )}
 
 {activePage === "Withdraw" && (
-  <WithdrawPage token={token} />
+  <WithdrawPage
+    token={token}
+    onNavigate={navigate}
+    onSuccess={refreshWalletData}
+    balance={walletBalance}
+    showBalance={showBalance}
+    setShowBalance={setShowBalance}
+  />
 )}
 
 {activePage === "Withdrawal History" && (
@@ -2821,36 +2828,71 @@ function BankAccountsPage({ token }) {
 }
 
 
-function WithdrawPage({ token, onNavigate }) {
+function WithdrawPage({
+  token,
+  onNavigate,
+  onSuccess,
+  balance,
+  showBalance,
+  setShowBalance,
+}) {
   const [accounts, setAccounts] = useState([]);
   const [bankAccountId, setBankAccountId] = useState("");
-  const [amount, setAmount] = useState("100");
+  const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
-  const [isError, setIsError] = useState(false);
 
-  const [hasPaymentPin, setHasPaymentPin] = useState(null);
-  const [showCreatePin, setShowCreatePin] = useState(false);
-  const [showPinConfirmation, setShowPinConfirmation] = useState(false);
-
-  const [accountPassword, setAccountPassword] = useState("");
-  const [newPaymentPin, setNewPaymentPin] = useState("");
-  const [confirmPaymentPin, setConfirmPaymentPin] = useState("");
-  const [paymentPin, setPaymentPin] = useState("");
-
-  const [creatingPin, setCreatingPin] = useState(false);
+  const [pin, setPin] = useState("");
+  const [showPinModal, setShowPinModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("");
+
+  // Only used when the server says no Payment PIN exists yet.
+  const [needsPin, setNeedsPin] = useState(false);
+  const [showCreatePin, setShowCreatePin] = useState(false);
+  const [accountPassword, setAccountPassword] = useState("");
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [creatingPin, setCreatingPin] = useState(false);
+  const [createMessage, setCreateMessage] = useState("");
+
+  // Wallet balance is stored in rupees.
+  const availableBalance =
+    balance === null || balance === undefined || balance === ""
+      ? null
+      : Number(balance);
+
+  const balanceLoaded =
+    availableBalance !== null &&
+    Number.isFinite(availableBalance) &&
+    availableBalance >= 0;
 
   const rupees = Number(amount);
 
   const validAmount =
+    amount.trim() !== "" &&
     Number.isInteger(rupees) &&
     rupees >= 100 &&
     rupees <= 25000;
 
+  const hasSufficientBalance =
+    balanceLoaded && rupees <= availableBalance;
+
   const selectedAccount = accounts.find(
     (account) => account.id === bankAccountId
   );
+
+  const canContinue =
+    Boolean(token) &&
+    Boolean(selectedAccount) &&
+    !loading &&
+    !submitting;
+
+  function showError(text) {
+    setMessage(text);
+    setMessageType("error");
+  }
 
   // Load saved bank accounts.
   useEffect(() => {
@@ -2860,26 +2902,18 @@ function WithdrawPage({ token, onNavigate }) {
       try {
         const response = await fetch(
           apiUrl("/api/v1/wallet/bank-accounts"),
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
+          { headers: { Authorization: `Bearer ${token}` } }
         );
 
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(
-            data.error || "Could not load bank accounts."
-          );
+          throw new Error(data.error || "Could not load bank accounts.");
         }
 
         if (!cancelled) {
           const list = data.bankAccounts || [];
-
           setAccounts(list);
-
           setBankAccountId((current) =>
             list.some((account) => account.id === current)
               ? current
@@ -2888,15 +2922,10 @@ function WithdrawPage({ token, onNavigate }) {
         }
       } catch (error) {
         if (!cancelled) {
-          setIsError(true);
-          setMessage(
-            error.message || "Could not load bank accounts."
-          );
+          showError(error.message || "Could not load bank accounts.");
         }
       } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        if (!cancelled) setLoading(false);
       }
     }
 
@@ -2907,195 +2936,105 @@ function WithdrawPage({ token, onNavigate }) {
     };
   }, [token]);
 
-  // Check whether the logged-in user has created a Payment PIN.
-  useEffect(() => {
-    let cancelled = false;
-
-    async function checkPaymentPin() {
-      try {
-        const response = await fetch(
-          apiUrl("/api/v1/user/me"),
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            data.error || "Could not check Payment PIN status."
-          );
-        }
-
-        if (!cancelled) {
-          setHasPaymentPin(
-            Boolean(data.user?.hasPaymentPin)
-          );
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setHasPaymentPin(null);
-          setIsError(true);
-          setMessage(
-            error.message || "Could not check Payment PIN status."
-          );
-        }
-      }
-    }
-
-    checkPaymentPin();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
-
-  // Create a Payment PIN using the existing backend endpoint.
-  async function createPaymentPin(event) {
-    event.preventDefault();
-
-    if (creatingPin) return;
-
-    if (!accountPassword) {
-      setIsError(true);
-      setMessage("Enter your account password.");
-      return;
-    }
-
-    if (!/^\d{4,6}$/.test(newPaymentPin)) {
-      setIsError(true);
-      setMessage("Enter a PIN containing 4 to 6 digits.");
-      return;
-    }
-
-    if (newPaymentPin !== confirmPaymentPin) {
-      setIsError(true);
-      setMessage("The Payment PINs do not match.");
-      return;
-    }
-
-    setCreatingPin(true);
-    setIsError(false);
+  // Step 1: validate the details, then open the PIN popup (like Transfer).
+  function openPinModal() {
     setMessage("");
+    setMessageType("");
 
-    try {
-      const response = await fetch(
-        apiUrl("/api/v1/user/payment-pin"),
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            password: accountPassword,
-            pin: newPaymentPin,
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        if (response.status === 409) {
-          // The PIN may have been created elsewhere.
-          setHasPaymentPin(true);
-        }
-
-        throw new Error(
-          data.error || "Could not create your Payment PIN."
-        );
-      }
-
-      setHasPaymentPin(true);
-      setShowCreatePin(false);
-      setShowPinConfirmation(true);
-
-      setAccountPassword("");
-      setNewPaymentPin("");
-      setConfirmPaymentPin("");
-      setPaymentPin("");
-
-      setIsError(false);
-      setMessage(
-        "Payment PIN created successfully. Enter it to continue."
-      );
-    } catch (error) {
-      setIsError(true);
-      setMessage(
-        error.message || "Could not create your Payment PIN."
-      );
-    } finally {
-      setCreatingPin(false);
+    if (!token) {
+      showError("Please sign in again to continue.");
+      return;
     }
+
+    if (!selectedAccount) {
+      showError("Please choose a bank account.");
+      return;
+    }
+
+    if (!validAmount) {
+      showError("Enter a whole-rupee amount between ₹100 and ₹25,000.");
+      return;
+    }
+
+    if (!balanceLoaded) {
+      showError("Your wallet balance is still loading.");
+      return;
+    }
+
+    if (!hasSufficientBalance) {
+      showError("Insufficient wallet balance for this withdrawal.");
+      return;
+    }
+
+    setPin("");
+    setShowPinModal(true);
   }
 
-  // Submit the withdrawal request.
-  async function requestWithdrawal(event) {
-    event?.preventDefault();
+  // Step 2: send the withdrawal request with the PIN.
+  async function handleWithdraw(event) {
+    event.preventDefault();
 
     if (submitting) return;
 
-    if (!selectedAccount || !validAmount) {
-      setIsError(true);
-      setMessage(
-        "Select a bank account and enter an amount between ₹100 and ₹25,000."
-      );
-      return;
-    }
+    setMessage("");
+    setMessageType("");
 
-    if (!/^\d{4,6}$/.test(paymentPin)) {
-      setIsError(true);
-      setMessage("Enter your 4–6 digit payment PIN.");
+    if (!/^\d{4,6}$/.test(pin)) {
+      showError("Please enter your 4–6 digit payment PIN.");
       return;
     }
 
     setSubmitting(true);
-    setIsError(false);
-    setMessage("");
 
     try {
-      const response = await fetch(
-        apiUrl("/api/v1/wallet/withdraw"),
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-            "Idempotency-Key": crypto.randomUUID(),
-          },
-          body: JSON.stringify({
-            bankAccountId,
-            amount: Math.round(rupees * 100),
-            pin: paymentPin,
-          }),
-        }
-      );
+      const response = await fetch(apiUrl("/api/v1/wallet/withdraw"), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "Idempotency-Key": crypto.randomUUID(),
+        },
+        body: JSON.stringify({
+          bankAccountId,
+          amount: Math.round(rupees * 100),
+          pin,
+        }),
+      });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
+        // The server says no PIN exists yet: offer to create one.
+        if (data.error === "Set your payment PIN first") {
+          setShowPinModal(false);
+          setPin("");
+          setNeedsPin(true);
+          showError("You have not created a Payment PIN yet.");
+          return;
+        }
+
         throw new Error(
           data.error ||
             `Withdrawal request failed (${response.status}).`
         );
       }
 
-      setIsError(false);
       setMessage(
         `Withdrawal request accepted. Reference: ${
           data.withdrawal?.reference || "Pending"
         }. Check Withdrawal History for updates.`
       );
+      setMessageType("success");
 
-      setShowPinConfirmation(false);
-      setPaymentPin("");
+      setAmount("");
+      setPin("");
+      setShowPinModal(false);
+
+      if (typeof onSuccess === "function") {
+        await onSuccess();
+      }
     } catch (error) {
-      setIsError(true);
-      setMessage(
+      showError(
         error.message || "Could not submit the withdrawal request."
       );
     } finally {
@@ -3103,144 +3042,206 @@ function WithdrawPage({ token, onNavigate }) {
     }
   }
 
-  // Decide which PIN screen to show.
-  function continueToPin() {
-    setMessage("");
-    setIsError(false);
+  // Create a Payment PIN (only reached when none exists).
+  async function createPaymentPin(event) {
+    event.preventDefault();
 
-    if (hasPaymentPin === null) {
-      setIsError(true);
-      setMessage(
-        "Payment PIN status is unavailable. Please refresh and try again."
-      );
+    if (creatingPin) return;
+
+    setCreateMessage("");
+
+    if (!accountPassword) {
+      setCreateMessage("Enter your account password.");
       return;
     }
 
-    setPaymentPin("");
+    if (!/^\d{4,6}$/.test(newPin)) {
+      setCreateMessage("Enter a PIN containing 4 to 6 digits.");
+      return;
+    }
 
-    if (hasPaymentPin) {
-      setShowPinConfirmation(true);
-    } else {
-      setShowCreatePin(true);
+    if (newPin !== confirmPin) {
+      setCreateMessage("The Payment PINs do not match.");
+      return;
+    }
+
+    setCreatingPin(true);
+
+    try {
+      const response = await fetch(apiUrl("/api/v1/user/payment-pin"), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ password: accountPassword, pin: newPin }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      // 409 means a PIN already exists, so just ask for it.
+      if (!response.ok && response.status !== 409) {
+        throw new Error(
+          data.error || "Could not create your Payment PIN."
+        );
+      }
+
+      setNeedsPin(false);
+      setShowCreatePin(false);
+      setAccountPassword("");
+      setNewPin("");
+      setConfirmPin("");
+      setMessage(
+        response.status === 409
+          ? "A Payment PIN already exists. Enter it to continue."
+          : "Payment PIN created. Tap Continue to withdraw."
+      );
+      setMessageType("success");
+    } catch (error) {
+      setCreateMessage(
+        error.message || "Could not create your Payment PIN."
+      );
+    } finally {
+      setCreatingPin(false);
     }
   }
 
   return (
-    <section className="content-card action-card withdraw-page">
-      <div className="withdraw-hero">
-        <div className="withdraw-hero-icon">
-          <span aria-hidden="true">↗</span>
+    <section className="transfer-page">
+      <header className="transfer-page-header">
+        <div className="transfer-header-icon" aria-hidden="true">
+          ↓
         </div>
 
         <div>
-          <p className="withdraw-eyebrow">WALLET SERVICES</p>
-          <h2>Withdraw money</h2>
-          <p>
-            Transfer funds from your wallet to your saved bank account.
+          <p className="transfer-eyebrow">WALLET SERVICES</p>
+          <h2>Withdraw Money</h2>
+          <p className="transfer-tagline">
+            Send money from your wallet to your saved bank account.
           </p>
         </div>
-      </div>
+      </header>
 
-      <div className="withdraw-content">
-        <div className="withdraw-main">
-          {/* Step 1: Select bank account */}
-          <div className="withdraw-panel">
-            <div className="withdraw-panel-heading">
-              <div>
-                <span className="withdraw-step">01</span>
-                <h3>Choose bank account</h3>
-              </div>
-              <span className="withdraw-heading-icon" aria-hidden="true">
-                ▤
-              </span>
-            </div>
+      {/* Available wallet balance */}
+      <section className="transfer-balance-card">
+        <div className="transfer-balance-top">
+          <div className="transfer-balance-icon" aria-hidden="true">
+            ₹
+          </div>
+          <span>Available Balance</span>
+        </div>
 
-            {loading ? (
-              <p className="form-help">Loading bank accounts...</p>
-            ) : accounts.length === 0 ? (
-              <div className="withdraw-empty-state">
-                <div className="withdraw-empty-icon" aria-hidden="true">
-                  ▤
-                </div>
-                <h4>No bank accounts linked</h4>
-                <p>
-                  Link a bank account before requesting a withdrawal.
-                </p>
-                <button
-                  type="button"
-                  className="withdraw-link-account-btn"
-                  onClick={() => onNavigate?.("bank-accounts")}
-                >
-                  + Link Bank Account
-                </button>
-              </div>
-            ) : (
-              <>
-                <label className="withdraw-label" htmlFor="withdraw-bank">
-                  Saved bank account
-                </label>
+        <div className="transfer-balance-amount-row">
+          <p className="transfer-balance-amount">
+            {!balanceLoaded
+              ? "Loading..."
+              : showBalance
+                ? `₹${availableBalance.toLocaleString("en-IN", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}`
+                : "₹••••••"}
+          </p>
 
-                <select
-                  id="withdraw-bank"
-                  className="withdraw-input"
-                  value={bankAccountId}
-                  onChange={(event) =>
-                    setBankAccountId(event.target.value)
-                  }
-                  required
-                >
-                  {accounts.map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {account.holderName} — {account.accountNumber} (
-                      {account.ifsc})
-                    </option>
-                  ))}
-                </select>
+          {typeof setShowBalance === "function" && (
+            <button
+              type="button"
+              className="eye-button transfer-balance-eye"
+              onClick={() => setShowBalance((previous) => !previous)}
+              aria-label={showBalance ? "Hide balance" : "Show balance"}
+              aria-pressed={showBalance}
+            >
+              {showBalance ? "◉" : "◎"}
+            </button>
+          )}
+        </div>
 
-                {selectedAccount && (
-                  <div className="withdraw-bank-card">
-                    <div className="withdraw-bank-symbol" aria-hidden="true">
-                      ▤
-                    </div>
-                    <div className="withdraw-bank-info">
-                      <strong>{selectedAccount.holderName}</strong>
-                      <span>
-                        Account ending in{" "}
-                        {String(selectedAccount.accountNumber).slice(-4)}
-                      </span>
-                      <span>{selectedAccount.ifsc}</span>
-                    </div>
-                    <span className="withdraw-verified">Saved</span>
-                  </div>
-                )}
-              </>
-            )}
+        <p className="transfer-balance-caption">
+          Amount currently available in your wallet
+        </p>
+      </section>
+
+      {/* Withdrawal details */}
+      <section className="transfer-details-card">
+        <div className="transfer-card-heading">
+          <div>
+            <p className="transfer-eyebrow">PAYOUT DETAILS</p>
+            <h3>Withdrawal Details</h3>
+            <p>Choose a bank account and enter the amount.</p>
           </div>
 
-          {/* Step 2: Enter withdrawal amount */}
-          <div className="withdraw-panel">
-            <div className="withdraw-panel-heading">
-              <div>
-                <span className="withdraw-step">02</span>
-                <h3>Enter withdrawal amount</h3>
-              </div>
-              <span className="withdraw-heading-icon" aria-hidden="true">
-                ₹
-              </span>
+          <div className="transfer-details-icon" aria-hidden="true">
+            ⇄
+          </div>
+        </div>
+
+        {loading ? (
+          <p className="form-help">Loading bank accounts...</p>
+        ) : accounts.length === 0 ? (
+          <div className="withdraw-empty-state">
+            <div className="withdraw-empty-icon" aria-hidden="true">
+              ▤
+            </div>
+            <h4>No bank accounts linked</h4>
+            <p>Link a bank account before requesting a withdrawal.</p>
+            <button
+              type="button"
+              className="withdraw-link-account-btn"
+              onClick={() => onNavigate?.("Bank Accounts")}
+            >
+              + Link Bank Account
+            </button>
+          </div>
+        ) : (
+          <form
+            className="transfer-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              openPinModal();
+            }}
+          >
+            <div className="transfer-field">
+              <label htmlFor="withdraw-bank">Bank account</label>
+
+              <select
+                id="withdraw-bank"
+                value={bankAccountId}
+                onChange={(event) => setBankAccountId(event.target.value)}
+                disabled={submitting}
+                required
+              >
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.holderName} — {account.accountNumber} (
+                    {account.ifsc})
+                  </option>
+                ))}
+              </select>
+
+              {selectedAccount && (
+                <div className="withdraw-bank-card">
+                  <div className="withdraw-bank-symbol" aria-hidden="true">
+                    ▤
+                  </div>
+                  <div className="withdraw-bank-info">
+                    <strong>{selectedAccount.holderName}</strong>
+                    <span>
+                      Account ending in{" "}
+                      {String(selectedAccount.accountNumber).slice(-4)}
+                    </span>
+                    <span>{selectedAccount.ifsc}</span>
+                  </div>
+                  <span className="withdraw-verified">Saved</span>
+                </div>
+              )}
             </div>
 
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                continueToPin();
-              }}
-            >
-              <label className="withdraw-label" htmlFor="withdraw-amount">
-                Amount in INR
-              </label>
+            <div className="transfer-field">
+              <label htmlFor="withdraw-amount">Amount</label>
 
-              <div className="withdraw-amount-input">
+              <div className="transfer-amount-wrap">
                 <span aria-hidden="true">₹</span>
+
                 <input
                   id="withdraw-amount"
                   type="number"
@@ -3249,283 +3250,310 @@ function WithdrawPage({ token, onNavigate }) {
                   step="1"
                   value={amount}
                   onChange={(event) => setAmount(event.target.value)}
+                  placeholder="0"
+                  inputMode="numeric"
                   required
-                  disabled={loading || accounts.length === 0}
+                  disabled={submitting}
                 />
-                <span className="withdraw-currency">INR</span>
+
+                <span className="transfer-currency">INR</span>
               </div>
 
-              <div className="withdraw-amount-range">
-                <span>Minimum ₹100</span>
-                <span>Maximum ₹25,000</span>
+              <div className="quick-amounts">
+                {[500, 1000, 5000].map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={
+                      Number(amount) === value
+                        ? "quick-amount selected"
+                        : "quick-amount"
+                    }
+                    onClick={() => setAmount(String(value))}
+                    disabled={submitting}
+                  >
+                    ₹{value.toLocaleString("en-IN")}
+                  </button>
+                ))}
               </div>
 
-              <div className="withdraw-processing-note">
-                <span aria-hidden="true">ⓘ</span>
-                <p>
-                  An accepted request does not confirm that money has
-                  reached your bank account.
-                </p>
-              </div>
-
-              <button
-                className="primary-button withdraw-submit"
-                type="submit"
-                disabled={
-                  loading ||
-                  accounts.length === 0 ||
-                  !selectedAccount ||
-                  !validAmount ||
-                  submitting ||
-                  hasPaymentPin === null
-                }
-              >
-                Continue
-              </button>
-            </form>
-          </div>
-        </div>
-
-        {/* Sidebar */}
-        <aside className="withdraw-sidebar">
-          <div className="withdraw-summary-card">
-            <span className="withdraw-summary-icon" aria-hidden="true">
-              ✓
-            </span>
-            <h3>Secure withdrawal</h3>
-            <p>
-              Verify your saved bank account and Payment PIN before
-              submitting a withdrawal request.
-            </p>
-            <div className="withdraw-summary-divider" />
-            <div className="withdraw-summary-row">
-              <span>Minimum amount</span>
-              <strong>₹100</strong>
+              <p className="transfer-field-help">
+                ₹100–₹25,000 per withdrawal, subject to backend limits.
+              </p>
             </div>
-            <div className="withdraw-summary-row">
-              <span>Maximum amount</span>
-              <strong>₹25,000</strong>
+
+            <div className="transfer-summary">
+              <div>
+                <span>Withdrawal amount</span>
+
+                <strong>
+                  {amount.trim() && Number.isFinite(rupees)
+                    ? `₹${rupees.toLocaleString("en-IN", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}`
+                    : "₹0.00"}
+                </strong>
+              </div>
+
+              <p>
+                An accepted request does not confirm that money has
+                reached your bank account.
+              </p>
             </div>
-          </div>
 
-          <div className="withdraw-help-card">
-            <strong>Before you withdraw</strong>
-            <p>
-              Check your saved bank details and available wallet balance.
-              Track requests in Withdrawal History.
-            </p>
-          </div>
-        </aside>
-      </div>
-
-      {/* Status and error messages */}
-      {message && (
-        <p
-          className={isError ? "form-help error-text" : "form-help"}
-          role="status"
-          aria-live="polite"
-        >
-          {message}
-        </p>
-      )}
-
-      {/* Create Payment PIN modal */}
-      {showCreatePin && (
-        <div className="withdraw-modal-overlay">
-          <div
-            className="withdraw-pin-confirmation"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="create-payment-pin-title"
-          >
-            <h3 id="create-payment-pin-title">Create Payment PIN</h3>
-            <p>
-              Set a 4–6 digit PIN to authorize wallet withdrawals.
-            </p>
-
-            <form onSubmit={createPaymentPin}>
-              <label className="withdraw-label" htmlFor="pin-account-password">
-                Account password
-              </label>
-              <input
-                id="pin-account-password"
-                className="withdraw-input"
-                type="password"
-                autoComplete="current-password"
-                value={accountPassword}
-                onChange={(event) =>
-                  setAccountPassword(event.target.value)
-                }
-                required
-                disabled={creatingPin}
-              />
-
-              <label className="withdraw-label" htmlFor="new-payment-pin">
-                New Payment PIN
-              </label>
-              <input
-                id="new-payment-pin"
-                className="withdraw-input"
-                type="password"
-                inputMode="numeric"
-                autoComplete="new-password"
-                maxLength={6}
-                value={newPaymentPin}
-                onChange={(event) =>
-                  setNewPaymentPin(
-                    event.target.value.replace(/\D/g, "").slice(0, 6)
-                  )
-                }
-                placeholder="Enter 4–6 digits"
-                required
-                disabled={creatingPin}
-              />
-
-              <label
-                className="withdraw-label"
-                htmlFor="confirm-new-payment-pin"
+            {message && !showPinModal && !showCreatePin && (
+              <div
+                className={`transfer-message ${
+                  messageType === "success" ? "is-success" : "is-error"
+                }`}
+                role={messageType === "error" ? "alert" : "status"}
               >
-                Confirm Payment PIN
-              </label>
-              <input
-                id="confirm-new-payment-pin"
-                className="withdraw-input"
-                type="password"
-                inputMode="numeric"
-                autoComplete="new-password"
-                maxLength={6}
-                value={confirmPaymentPin}
-                onChange={(event) =>
-                  setConfirmPaymentPin(
-                    event.target.value.replace(/\D/g, "").slice(0, 6)
-                  )
-                }
-                placeholder="Re-enter your PIN"
-                required
-                disabled={creatingPin}
-              />
+                {message}
+              </div>
+            )}
 
-              <button
-                type="submit"
-                className="primary-button"
-                disabled={
-                  creatingPin ||
-                  !accountPassword ||
-                  !/^\d{4,6}$/.test(newPaymentPin) ||
-                  newPaymentPin !== confirmPaymentPin
-                }
-              >
-                {creatingPin ? "Creating PIN..." : "Create Payment PIN"}
-              </button>
-
+            {needsPin && (
               <button
                 type="button"
-                className="light-button"
-                disabled={creatingPin}
+                className="transfer-pin-cancel"
                 onClick={() => {
-                  setShowCreatePin(false);
-                  setAccountPassword("");
-                  setNewPaymentPin("");
-                  setConfirmPaymentPin("");
+                  setCreateMessage("");
+                  setShowCreatePin(true);
                 }}
               >
-                Cancel
+                Create Payment PIN
               </button>
-            </form>
-          </div>
-        </div>
-      )}
+            )}
 
-      {/* Confirm existing or newly created Payment PIN */}
-      {showPinConfirmation && (
+            <button
+              className="transfer-submit"
+              type="submit"
+              disabled={!canContinue}
+            >
+              Continue ↓
+            </button>
+
+            <p className="transfer-security-note">
+              Check your bank details carefully before withdrawing.
+            </p>
+          </form>
+        )}
+      </section>
+
+      {/* Payment PIN popup */}
+      {showPinModal && (
         <div
-          className="withdraw-modal-overlay"
-          onClick={(event) => {
-            if (event.target === event.currentTarget && !submitting) {
-              setShowPinConfirmation(false);
-              setPaymentPin("");
+          className="transfer-pin-overlay"
+          onClick={() => {
+            if (!submitting) {
+              setShowPinModal(false);
+              setPin("");
+              setMessage("");
+              setMessageType("");
             }
           }}
         >
           <div
-            className="withdraw-pin-confirmation"
+            className="transfer-pin-modal"
             role="dialog"
             aria-modal="true"
             aria-labelledby="withdraw-pin-title"
+            onClick={(event) => event.stopPropagation()}
           >
-            <h3 id="withdraw-pin-title">Confirm withdrawal</h3>
+            <div className="transfer-pin-icon" aria-hidden="true">
+              🔒
+            </div>
+
+            <h3 id="withdraw-pin-title">Confirm Withdrawal</h3>
 
             <p>
-              Amount: ₹{rupees.toLocaleString("en-IN")}
-            </p>
-            <p>
-              Bank account ending in{" "}
+              Enter your Payment PIN to withdraw{" "}
+              <strong>
+                ₹
+                {rupees.toLocaleString("en-IN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </strong>{" "}
+              to the account ending in{" "}
               {selectedAccount
                 ? String(selectedAccount.accountNumber).slice(-4)
                 : "—"}
+              .
             </p>
 
-            <form onSubmit={requestWithdrawal}>
-              <label
-                className="withdraw-label"
-                htmlFor="withdraw-payment-pin"
-              >
-                Enter your Payment PIN
-              </label>
-              <input
-                id="withdraw-payment-pin"
-                className="withdraw-input"
-                type="password"
-                inputMode="numeric"
-                autoComplete="off"
-                maxLength={6}
-                value={paymentPin}
-                onChange={(event) =>
-                  setPaymentPin(
-                    event.target.value.replace(/\D/g, "").slice(0, 6)
-                  )
-                }
-                placeholder="Enter 4–6 digit PIN"
-                required
-                disabled={submitting}
-              />
+            <form onSubmit={handleWithdraw}>
+              <div className="transfer-field">
+                <label htmlFor="withdraw-payment-pin">Payment PIN</label>
 
-              <button
-                type="submit"
-                className="primary-button"
-                disabled={
-                  submitting || !/^\d{4,6}$/.test(paymentPin)
-                }
-              >
-                {submitting ? "Submitting..." : "Confirm withdrawal"}
-              </button>
+                <input
+                  id="withdraw-payment-pin"
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  maxLength={6}
+                  value={pin}
+                  onChange={(event) =>
+                    setPin(event.target.value.replace(/\D/g, "").slice(0, 6))
+                  }
+                  placeholder="Enter your Payment PIN"
+                  required
+                  autoFocus
+                  disabled={submitting}
+                />
+              </div>
 
-              <button
-                type="button"
-                className="light-button"
-                disabled={submitting}
-                onClick={() => {
-                  setShowPinConfirmation(false);
-                  setPaymentPin("");
-                }}
-              >
-                Cancel
-              </button>
+              {message && (
+                <div
+                  className={`transfer-message ${
+                    messageType === "success" ? "is-success" : "is-error"
+                  }`}
+                  role={messageType === "error" ? "alert" : "status"}
+                >
+                  {message}
+                </div>
+              )}
+
+              <div className="transfer-pin-actions">
+                <button
+                  type="button"
+                  className="transfer-pin-cancel"
+                  onClick={() => {
+                    setShowPinModal(false);
+                    setPin("");
+                    setMessage("");
+                    setMessageType("");
+                  }}
+                  disabled={submitting}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="transfer-submit"
+                  disabled={submitting || !/^\d{4,6}$/.test(pin)}
+                >
+                  {submitting ? "Processing..." : "Confirm Withdrawal"}
+                </button>
+              </div>
             </form>
           </div>
         </div>
       )}
 
-      <div className="withdraw-footer">
-        <span>Secure wallet operations</span>
-        <button
-          className="light-button"
-          type="button"
-          onClick={() => window.location.reload()}
-        >
-          ↻ Refresh page
-        </button>
-      </div>
+      {/* Create Payment PIN popup (only when no PIN exists) */}
+      {showCreatePin && (
+        <div className="transfer-pin-overlay">
+          <div
+            className="transfer-pin-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-payment-pin-title"
+          >
+            <div className="transfer-pin-icon" aria-hidden="true">
+              🔐
+            </div>
+
+            <h3 id="create-payment-pin-title">Create Payment PIN</h3>
+            <p>Set a 4–6 digit PIN to authorize withdrawals.</p>
+
+            <form onSubmit={createPaymentPin}>
+              <div className="transfer-field">
+                <label htmlFor="pin-account-password">
+                  Account password
+                </label>
+                <input
+                  id="pin-account-password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={accountPassword}
+                  onChange={(event) => setAccountPassword(event.target.value)}
+                  required
+                  disabled={creatingPin}
+                />
+              </div>
+
+              <div className="transfer-field">
+                <label htmlFor="new-payment-pin">New Payment PIN</label>
+                <input
+                  id="new-payment-pin"
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="new-password"
+                  maxLength={6}
+                  value={newPin}
+                  onChange={(event) =>
+                    setNewPin(event.target.value.replace(/\D/g, "").slice(0, 6))
+                  }
+                  placeholder="Enter 4–6 digits"
+                  required
+                  disabled={creatingPin}
+                />
+              </div>
+
+              <div className="transfer-field">
+                <label htmlFor="confirm-new-payment-pin">
+                  Confirm Payment PIN
+                </label>
+                <input
+                  id="confirm-new-payment-pin"
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="new-password"
+                  maxLength={6}
+                  value={confirmPin}
+                  onChange={(event) =>
+                    setConfirmPin(
+                      event.target.value.replace(/\D/g, "").slice(0, 6)
+                    )
+                  }
+                  placeholder="Re-enter your PIN"
+                  required
+                  disabled={creatingPin}
+                />
+              </div>
+
+              {createMessage && (
+                <div className="transfer-message is-error" role="alert">
+                  {createMessage}
+                </div>
+              )}
+
+              <div className="transfer-pin-actions">
+                <button
+                  type="button"
+                  className="transfer-pin-cancel"
+                  disabled={creatingPin}
+                  onClick={() => {
+                    setShowCreatePin(false);
+                    setAccountPassword("");
+                    setNewPin("");
+                    setConfirmPin("");
+                    setCreateMessage("");
+                  }}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="transfer-submit"
+                  disabled={
+                    creatingPin ||
+                    !accountPassword ||
+                    !/^\d{4,6}$/.test(newPin) ||
+                    newPin !== confirmPin
+                  }
+                >
+                  {creatingPin ? "Creating..." : "Create PIN"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

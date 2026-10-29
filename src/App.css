@@ -2671,119 +2671,98 @@ button[style*="rgb(255, 247, 237)"] {
   }
 }
 
+
 /* ==========================================================================
-   KaasuPay Transfer Money Page
-   Uses the existing charcoal + warm gold theme
+   Transfer & Withdraw pages (shared "transfer-*" layout)
    ========================================================================== */
-
 .transfer-page {
-  width: 100%;
-  max-width: 760px;
-  margin: 0 auto;
   display: grid;
-  gap: 22px;
-  color: var(--text);
+  gap: 18px;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto 22px;
 }
 
-.transfer-page-header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 2px;
-}
+.transfer-page-header { display: flex; align-items: center; gap: 16px; }
+.transfer-page-header h2 { font-size: 26px; }
+.transfer-tagline { margin-top: 3px; color: var(--muted); }
 
-.transfer-header-icon {
+.transfer-header-icon,
+.transfer-details-icon {
   display: grid;
   place-items: center;
-  width: 58px;
-  height: 58px;
   flex-shrink: 0;
-  border-radius: 17px;
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
   background: var(--ink);
   color: var(--coin);
-  font-size: 29px;
-  font-weight: 700;
+  font-size: 24px;
 }
+
+.transfer-details-icon { width: 42px; height: 42px; border-radius: 12px; font-size: 18px; background: var(--coin-soft); color: var(--coin-deep); }
 
 .transfer-eyebrow {
-  margin-bottom: 5px;
+  margin-bottom: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   color: var(--coin-deep);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
 }
 
-.transfer-page-header h2 {
-  font-size: clamp(24px, 3vw, 30px);
-  font-weight: 700;
-  letter-spacing: -0.035em;
-}
-
-.transfer-tagline {
-  margin-top: 5px;
-  color: var(--muted);
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-/* Available balance */
+/* Balance card (same coin-ring motif as the dashboard) */
 .transfer-balance-card {
   position: relative;
   overflow: hidden;
-  padding: 25px 28px;
-  border: 1px solid var(--ink-2);
+  padding: 22px 24px;
   border-radius: var(--r-lg);
-  background:
-    radial-gradient(
-      circle at 100% 0%,
-      rgba(201, 141, 95, 0.19),
-      transparent 42%
-    ),
-    var(--ink);
-  color: rgba(255, 255, 255, 0.72);
+  background: radial-gradient(120% 120% at 0% 0%, var(--ink-3) 0%, var(--ink) 60%);
+  color: #fff;
   box-shadow: var(--shadow-md);
 }
 
-.transfer-balance-top {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 14px;
-  font-weight: 600;
+.transfer-balance-card::after {
+  content: "";
+  position: absolute;
+  top: -90px;
+  right: -90px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: repeating-radial-gradient(circle, transparent 0 22px, rgba(201, 141, 95, 0.22) 22px 24px);
+  pointer-events: none;
 }
+
+.transfer-balance-card > * { position: relative; z-index: 1; }
+
+.transfer-balance-top { display: flex; align-items: center; gap: 10px; font-size: 14px; color: rgba(255, 255, 255, 0.7); }
 
 .transfer-balance-icon {
   display: grid;
   place-items: center;
-  width: 39px;
-  height: 39px;
-  border-radius: 12px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
   background: var(--coin);
   color: var(--ink);
-  font-size: 20px;
-  font-weight: 800;
+  font-weight: 700;
 }
+
+.transfer-balance-amount-row { display: flex; align-items: center; gap: 12px; margin: 12px 0 4px; }
 
 .transfer-balance-amount {
-  margin-top: 19px;
-  color: var(--coin);
   font-family: var(--font-display);
-  font-size: clamp(32px, 5vw, 42px);
+  font-size: 38px;
   font-weight: 700;
-  letter-spacing: -0.035em;
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
 }
 
-.transfer-balance-caption {
-  margin-top: 6px;
-  font-size: 12.5px;
-  color: rgba(255, 255, 255, 0.55);
-}
+.transfer-balance-caption { font-size: 13px; color: rgba(255, 255, 255, 0.55); }
 
-/* Transfer details card */
+/* Details card */
 .transfer-details-card {
-  padding: 28px;
+  padding: 24px;
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   background: var(--surface);
@@ -2792,299 +2771,142 @@ button[style*="rgb(255, 247, 237)"] {
 
 .transfer-card-heading {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 27px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--line-soft);
+  margin-bottom: 22px;
 }
 
-.transfer-card-heading h3 {
-  font-size: 21px;
-  letter-spacing: -0.025em;
-}
+.transfer-card-heading h3 { font-size: 20px; }
+.transfer-card-heading p:last-child { margin-top: 3px; font-size: 14px; color: var(--muted); }
 
-.transfer-card-heading > div:first-child > p:last-child {
-  margin-top: 6px;
-  color: var(--muted);
-  font-size: 13.5px;
-  line-height: 1.6;
-}
+.transfer-form { display: grid; gap: 20px; }
 
-.transfer-details-icon {
-  display: grid;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  flex-shrink: 0;
-  border-radius: 14px;
-  background: var(--coin-soft);
-  color: var(--coin-deep);
-  font-size: 25px;
-}
+.transfer-field { display: grid; gap: 8px; }
+.transfer-field label { font-size: 13px; font-weight: 600; }
+.transfer-optional { font-weight: 500; color: var(--faint); }
+.transfer-field-help { font-size: 12.5px; color: var(--faint); }
 
-.transfer-form {
-  display: grid;
-  gap: 22px;
-}
-
-.transfer-field {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
-}
-
-.transfer-field > label {
-  font-size: 13.5px;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.transfer-optional {
-  font-weight: 400;
-  color: var(--faint);
-}
-
-.transfer-field input,
 .transfer-field textarea {
   width: 100%;
-  min-width: 0;
-  padding: 13px 14px;
+  padding: 12px 14px;
+  resize: vertical;
+  font: inherit;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-  font-size: 14px;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.transfer-field input {
-  min-height: 48px;
-}
+.transfer-field textarea:focus { outline: none; border-color: var(--coin-deep); box-shadow: var(--ring); }
 
-.transfer-field textarea {
-  min-height: 92px;
-  resize: vertical;
-}
-
-.transfer-field input::placeholder,
-.transfer-field textarea::placeholder {
-  color: var(--faint);
-}
-
-.transfer-field input:focus,
-.transfer-field textarea:focus {
-  outline: none;
-  border-color: var(--coin-deep);
-  box-shadow: var(--ring);
-}
-
-.transfer-field-help {
-  color: var(--muted);
-  font-size: 12.5px;
-  line-height: 1.55;
-}
-
-/* Amount input */
 .transfer-amount-wrap {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-width: 0;
-  padding: 0 13px;
+  padding: 0 16px;
   border: 1px solid var(--line);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   background: var(--surface);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.transfer-amount-wrap:focus-within {
-  border-color: var(--coin-deep);
-  box-shadow: var(--ring);
-}
+.transfer-amount-wrap:focus-within { border-color: var(--coin-deep); box-shadow: var(--ring); }
 
 .transfer-amount-wrap > span:first-child {
-  color: var(--coin-deep);
-  font-size: 19px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--muted);
 }
 
 .transfer-amount-wrap input {
-  flex: 1;
-  width: 100%;
-  min-width: 0;
-  padding: 13px 0;
+  min-height: 60px;
+  padding: 0;
   border: 0;
-  outline: 0;
-  box-shadow: none;
   background: transparent;
-  font-size: 17px;
-  font-weight: 600;
-}
-
-.transfer-amount-wrap input:focus {
-  border: 0;
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
   box-shadow: none;
 }
 
-.transfer-currency {
-  color: var(--faint);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-}
+.transfer-amount-wrap input:focus { box-shadow: none; }
+.transfer-currency { font-size: 12px; font-weight: 700; color: var(--faint); }
 
-/* Transfer summary */
+.transfer-field .quick-amounts { margin: 0; }
+
 .transfer-summary {
-  padding: 17px 18px;
-  border: 1px solid var(--line);
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
   border-radius: var(--r-md);
   background: var(--paper);
 }
 
-.transfer-summary > div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-}
+.transfer-summary > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.transfer-summary span { font-size: 14px; color: var(--muted); }
+.transfer-summary strong { font-family: var(--font-display); font-size: 24px; font-variant-numeric: tabular-nums; }
+.transfer-summary p { font-size: 12.5px; color: var(--faint); }
 
-.transfer-summary > div > span {
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.transfer-summary strong {
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: 22px;
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
-}
-
-.transfer-summary > p {
-  margin-top: 7px;
-  color: var(--muted);
-  font-size: 12px;
+.transfer-message {
+  padding: 11px 14px;
+  border-radius: var(--r-sm);
+  font-size: 13.5px;
+  font-weight: 500;
   line-height: 1.5;
 }
 
-/* Success and error feedback */
-.transfer-message {
-  padding: 12px 14px;
-  border-radius: var(--r-sm);
-  font-size: 13.5px;
-  line-height: 1.55;
-}
+.transfer-message.is-error { background: var(--danger-soft); color: var(--danger); }
+.transfer-message.is-success { background: var(--jade-soft); color: var(--jade); }
 
-.transfer-message.is-error {
-  background: var(--danger-soft);
-  color: var(--danger);
-}
-
-.transfer-message.is-success {
-  background: var(--jade-soft);
-  color: var(--jade);
-}
-
-/* Submit action */
-.transfer-submit {
-  display: flex;
+.transfer-submit,
+.transfer-pin-cancel {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
+  min-height: 50px;
+  padding: 0 22px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+
+.transfer-submit {
   width: 100%;
-  min-height: 51px;
-  padding: 12px 18px;
-  border: 1px solid var(--coin);
-  border-radius: var(--r-md);
   background: var(--coin);
   color: var(--ink);
-  font-size: 15px;
-  font-weight: 800;
-  transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 6px 14px -6px rgba(128, 84, 56, 0.6);
 }
 
-.transfer-submit:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
+.transfer-submit:hover:not(:disabled) { background: #d69c6e; }
+.transfer-submit:disabled { background: #e6dccf; color: #8a7a68; box-shadow: none; }
 
-.transfer-security-note {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  color: var(--muted);
-  text-align: center;
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.transfer-security-note span {
-  color: var(--jade);
-  font-size: 9px;
-}
+.transfer-pin-cancel { background: var(--surface); border-color: var(--line); color: var(--text); }
+.transfer-pin-cancel:hover:not(:disabled) { background: var(--paper); border-color: #d3cdc5; }
+.transfer-pin-cancel:disabled { opacity: 0.5; }
 
 @media (hover: hover) {
-  .transfer-submit:hover:not(:disabled) {
-    transform: translateY(-2px);
-    background: #d6a174;
-    box-shadow: 0 9px 20px rgba(128, 84, 56, 0.2);
-  }
+  .transfer-submit:hover:not(:disabled),
+  .transfer-pin-cancel:hover:not(:disabled) { transform: translateY(-2px); }
 }
 
-@media (max-width: 640px) {
-  .transfer-page {
-    gap: 17px;
-  }
+.transfer-security-note { text-align: center; font-size: 12.5px; color: var(--muted); }
 
-  .transfer-header-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 14px;
-  }
-
-  .transfer-balance-card {
-    padding: 21px;
-  }
-
-  .transfer-details-card {
-    padding: 20px 17px;
-  }
-
-  .transfer-card-heading {
-    margin-bottom: 22px;
-  }
-
-  .transfer-card-heading h3 {
-    font-size: 19px;
-  }
-
-  .transfer-details-icon {
-    width: 40px;
-    height: 40px;
-  }
-
-  .transfer-summary > div {
-    align-items: flex-start;
-  }
-}
-
-
-
+/* PIN popups */
 .transfer-pin-overlay {
   position: fixed;
   inset: 0;
-  z-index: 10000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  z-index: 100;
+  display: grid;
+  place-items: center;
   padding: 20px;
-  background: rgba(18, 18, 18, 0.6);
+  background: rgba(41, 41, 41, 0.55);
   backdrop-filter: blur(4px);
+  animation: fade-in 0.15s ease-out;
 }
 
 .transfer-pin-modal {
@@ -3092,69 +2914,35 @@ button[style*="rgb(255, 247, 237)"] {
   max-width: 420px;
   max-height: calc(100vh - 40px);
   overflow-y: auto;
-  padding: 28px;
-  box-sizing: border-box;
-  background: #fff;
-  border: 1px solid #e8e2da;
-  border-radius: 14px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  padding: 28px 24px 24px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+  animation: pop-in 0.2s ease-out;
 }
 
 .transfer-pin-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  margin-bottom: 18px;
-  background: #f6eee5;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 14px;
   border-radius: 50%;
-  font-size: 22px;
+  background: var(--coin-soft);
+  font-size: 24px;
 }
 
-.transfer-pin-modal h3 {
-  margin: 0 0 8px;
-  color: #24201c;
-  font-size: 22px;
-}
+.transfer-pin-modal h3 { font-size: 21px; }
+.transfer-pin-modal > p { margin: 8px 0 20px; font-size: 14px; color: var(--muted); }
+.transfer-pin-modal form { display: grid; gap: 16px; text-align: left; }
+.transfer-pin-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-.transfer-pin-modal > p {
-  margin: 0 0 24px;
-  color: #716a63;
-  line-height: 1.5;
-}
+.transfer-pin-modal input[type="password"] { text-align: center; letter-spacing: 0.3em; font-size: 18px; }
+.transfer-pin-modal #pin-account-password { letter-spacing: normal; font-size: 15px; }
 
-.transfer-pin-modal .transfer-field {
-  margin-bottom: 20px;
-}
-
-.transfer-pin-modal input {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.transfer-pin-actions {
-  display: flex;
-  gap: 12px;
-  margin-top: 22px;
-}
-
-.transfer-pin-actions button {
-  flex: 1;
-  min-width: 0;
-  min-height: 46px;
-}
-
-.transfer-pin-cancel {
-  border: 1px solid #ded7ce;
-  border-radius: 8px;
-  background: #fff;
-  color: #39332d;
-  cursor: pointer;
-}
-
-@media (max-width: 480px) {
-  .transfer-pin-modal {
-    padding: 22px 18px;
-  }
+@media (max-width: 640px) {
+  .transfer-details-card { padding: 18px; }
+  .transfer-balance-amount { font-size: 32px; }
+  .transfer-pin-actions { grid-template-columns: 1fr; }
 }
