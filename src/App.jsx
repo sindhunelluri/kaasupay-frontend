@@ -2848,8 +2848,11 @@ function WithdrawPage({
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
 
-  // Only used when the server says no Payment PIN exists yet.
-  const [needsPin, setNeedsPin] = useState(false);
+  // Payment PIN state
+  const [hasPaymentPin, setHasPaymentPin] = useState(null);
+  const [checkingPin, setCheckingPin] = useState(true);
+
+  // Create Payment PIN state
   const [showCreatePin, setShowCreatePin] = useState(false);
   const [accountPassword, setAccountPassword] = useState("");
   const [newPin, setNewPin] = useState("");
@@ -2887,7 +2890,8 @@ function WithdrawPage({
     Boolean(token) &&
     Boolean(selectedAccount) &&
     !loading &&
-    !submitting;
+    !submitting &&
+    !checkingPin;
 
   function showError(text) {
     setMessage(text);
@@ -2902,18 +2906,26 @@ function WithdrawPage({
       try {
         const response = await fetch(
           apiUrl("/api/v1/wallet/bank-accounts"),
-          { headers: { Authorization: `Bearer ${token}` } }
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
 
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.error || "Could not load bank accounts.");
+          throw new Error(
+            data.error || "Could not load bank accounts."
+          );
         }
 
         if (!cancelled) {
           const list = data.bankAccounts || [];
+
           setAccounts(list);
+
           setBankAccountId((current) =>
             list.some((account) => account.id === current)
               ? current
@@ -2922,21 +2934,86 @@ function WithdrawPage({
         }
       } catch (error) {
         if (!cancelled) {
-          showError(error.message || "Could not load bank accounts.");
+          showError(
+            error.message || "Could not load bank accounts."
+          );
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
-    loadBankAccounts();
+    if (token) {
+      loadBankAccounts();
+    } else {
+      setLoading(false);
+    }
 
     return () => {
       cancelled = true;
     };
   }, [token]);
 
-  // Step 1: validate the details, then open the PIN popup (like Transfer).
+  // Check whether the user already has a Payment PIN.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function checkPaymentPin() {
+      setCheckingPin(true);
+
+      try {
+        const response = await fetch(apiUrl("/api/v1/user/me"), {
+  method: "GET",
+  headers: {
+    Authorization: `Bearer ${token}`,
+  },
+  cache: "no-store",
+});
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.error || "Could not check Payment PIN status."
+          );
+        }
+
+        if (typeof data.user?.hasPaymentPin !== "boolean") {
+          throw new Error(
+            "Payment PIN status is missing from the server response."
+          );
+        }
+
+        if (!cancelled) {
+          setHasPaymentPin(data.user.hasPaymentPin);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setHasPaymentPin(null);
+          showError(error.message);
+        }
+      } finally {
+        if (!cancelled) {
+          setCheckingPin(false);
+        }
+      }
+    }
+
+    if (token) {
+      checkPaymentPin();
+    } else {
+      setHasPaymentPin(null);
+      setCheckingPin(false);
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  // Validate details and decide which PIN popup to open.
   function openPinModal() {
     setMessage("");
     setMessageType("");
@@ -2952,7 +3029,9 @@ function WithdrawPage({
     }
 
     if (!validAmount) {
-      showError("Enter a whole-rupee amount between ₹100 and ₹25,000.");
+      showError(
+        "Enter a whole-rupee amount between ₹100 and ₹25,000."
+      );
       return;
     }
 
@@ -2966,11 +3045,23 @@ function WithdrawPage({
       return;
     }
 
+    if (checkingPin || hasPaymentPin === null) {
+      showError("Payment PIN status is unavailable. Please try again.");
+      return;
+    }
+
     setPin("");
-    setShowPinModal(true);
+
+    if (hasPaymentPin) {
+      // Existing user: ask for the saved PIN.
+      setShowPinModal(true);
+    } else {
+      // First-time user: create a PIN.
+      setShowCreatePin(true);
+    }
   }
 
-  // Step 2: send the withdrawal request with the PIN.
+  // Submit withdrawal using the saved Payment PIN.
   async function handleWithdraw(event) {
     event.preventDefault();
 
@@ -2980,36 +3071,38 @@ function WithdrawPage({
     setMessageType("");
 
     if (!/^\d{4,6}$/.test(pin)) {
-      showError("Please enter your 4–6 digit payment PIN.");
+      showError("Please enter your 4–6 digit Payment PIN.");
       return;
     }
 
     setSubmitting(true);
 
     try {
-      const response = await fetch(apiUrl("/api/v1/wallet/withdraw"), {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          "Idempotency-Key": crypto.randomUUID(),
-        },
-        body: JSON.stringify({
-          bankAccountId,
-          amount: Math.round(rupees * 100),
-          pin,
-        }),
-      });
+      const response = await fetch(
+        apiUrl("/api/v1/wallet/withdraw"),
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            "Idempotency-Key": crypto.randomUUID(),
+          },
+          body: JSON.stringify({
+            bankAccountId,
+            amount: Math.round(rupees * 100),
+            pin,
+          }),
+        }
+      );
 
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        // The server says no PIN exists yet: offer to create one.
         if (data.error === "Set your payment PIN first") {
+          setHasPaymentPin(false);
           setShowPinModal(false);
           setPin("");
-          setNeedsPin(true);
-          showError("You have not created a Payment PIN yet.");
+          setShowCreatePin(true);
           return;
         }
 
@@ -3024,6 +3117,7 @@ function WithdrawPage({
           data.withdrawal?.reference || "Pending"
         }. Check Withdrawal History for updates.`
       );
+
       setMessageType("success");
 
       setAmount("");
@@ -3042,7 +3136,7 @@ function WithdrawPage({
     }
   }
 
-  // Create a Payment PIN (only reached when none exists).
+  // Create a Payment PIN for first-time users.
   async function createPaymentPin(event) {
     event.preventDefault();
 
@@ -3068,35 +3162,56 @@ function WithdrawPage({
     setCreatingPin(true);
 
     try {
-      const response = await fetch(apiUrl("/api/v1/user/payment-pin"), {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ password: accountPassword, pin: newPin }),
-      });
+      const response = await fetch(
+        apiUrl("/api/v1/user/payment-pin"),
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            password: accountPassword,
+            pin: newPin,
+          }),
+        }
+      );
 
       const data = await response.json().catch(() => ({}));
 
-      // 409 means a PIN already exists, so just ask for it.
-      if (!response.ok && response.status !== 409) {
+      // If a PIN already exists, ask the user to enter that PIN.
+      if (response.status === 409) {
+        setHasPaymentPin(true);
+        setShowCreatePin(false);
+        setAccountPassword("");
+        setNewPin("");
+        setConfirmPin("");
+        setPin("");
+        setShowPinModal(true);
+        return;
+      }
+
+      if (!response.ok) {
         throw new Error(
           data.error || "Could not create your Payment PIN."
         );
       }
 
-      setNeedsPin(false);
+      // PIN created successfully.
+      setHasPaymentPin(true);
       setShowCreatePin(false);
+
       setAccountPassword("");
       setNewPin("");
       setConfirmPin("");
-      setMessage(
-        response.status === 409
-          ? "A Payment PIN already exists. Enter it to continue."
-          : "Payment PIN created. Tap Continue to withdraw."
-      );
+      setPin("");
+
+      setCreateMessage("");
+      setMessage("Payment PIN created. Enter it to confirm withdrawal.");
       setMessageType("success");
+
+      // Immediately open the PIN-entry popup.
+      setShowPinModal(true);
     } catch (error) {
       setCreateMessage(
         error.message || "Could not create your Payment PIN."
@@ -3147,7 +3262,9 @@ function WithdrawPage({
             <button
               type="button"
               className="eye-button transfer-balance-eye"
-              onClick={() => setShowBalance((previous) => !previous)}
+              onClick={() =>
+                setShowBalance((previous) => !previous)
+              }
               aria-label={showBalance ? "Hide balance" : "Show balance"}
               aria-pressed={showBalance}
             >
@@ -3184,6 +3301,7 @@ function WithdrawPage({
             </div>
             <h4>No bank accounts linked</h4>
             <p>Link a bank account before requesting a withdrawal.</p>
+
             <button
               type="button"
               className="withdraw-link-account-btn"
@@ -3206,7 +3324,9 @@ function WithdrawPage({
               <select
                 id="withdraw-bank"
                 value={bankAccountId}
-                onChange={(event) => setBankAccountId(event.target.value)}
+                onChange={(event) =>
+                  setBankAccountId(event.target.value)
+                }
                 disabled={submitting}
                 required
               >
@@ -3220,9 +3340,13 @@ function WithdrawPage({
 
               {selectedAccount && (
                 <div className="withdraw-bank-card">
-                  <div className="withdraw-bank-symbol" aria-hidden="true">
+                  <div
+                    className="withdraw-bank-symbol"
+                    aria-hidden="true"
+                  >
                     ▤
                   </div>
+
                   <div className="withdraw-bank-info">
                     <strong>{selectedAccount.holderName}</strong>
                     <span>
@@ -3231,6 +3355,7 @@ function WithdrawPage({
                     </span>
                     <span>{selectedAccount.ifsc}</span>
                   </div>
+
                   <span className="withdraw-verified">Saved</span>
                 </div>
               )}
@@ -3249,7 +3374,9 @@ function WithdrawPage({
                   max="25000"
                   step="1"
                   value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
+                  onChange={(event) =>
+                    setAmount(event.target.value)
+                  }
                   placeholder="0"
                   inputMode="numeric"
                   required
@@ -3313,25 +3440,12 @@ function WithdrawPage({
               </div>
             )}
 
-            {needsPin && (
-              <button
-                type="button"
-                className="transfer-pin-cancel"
-                onClick={() => {
-                  setCreateMessage("");
-                  setShowCreatePin(true);
-                }}
-              >
-                Create Payment PIN
-              </button>
-            )}
-
             <button
               className="transfer-submit"
               type="submit"
               disabled={!canContinue}
             >
-              Continue ↓
+              {checkingPin ? "Checking..." : "Continue ↓"}
             </button>
 
             <p className="transfer-security-note">
@@ -3341,7 +3455,7 @@ function WithdrawPage({
         )}
       </section>
 
-      {/* Payment PIN popup */}
+      {/* Enter existing Payment PIN */}
       {showPinModal && (
         <div
           className="transfer-pin-overlay"
@@ -3385,7 +3499,9 @@ function WithdrawPage({
 
             <form onSubmit={handleWithdraw}>
               <div className="transfer-field">
-                <label htmlFor="withdraw-payment-pin">Payment PIN</label>
+                <label htmlFor="withdraw-payment-pin">
+                  Payment PIN
+                </label>
 
                 <input
                   id="withdraw-payment-pin"
@@ -3395,7 +3511,9 @@ function WithdrawPage({
                   maxLength={6}
                   value={pin}
                   onChange={(event) =>
-                    setPin(event.target.value.replace(/\D/g, "").slice(0, 6))
+                    setPin(
+                      event.target.value.replace(/\D/g, "").slice(0, 6)
+                    )
                   }
                   placeholder="Enter your Payment PIN"
                   required
@@ -3433,7 +3551,9 @@ function WithdrawPage({
                 <button
                   type="submit"
                   className="transfer-submit"
-                  disabled={submitting || !/^\d{4,6}$/.test(pin)}
+                  disabled={
+                    submitting || !/^\d{4,6}$/.test(pin)
+                  }
                 >
                   {submitting ? "Processing..." : "Confirm Withdrawal"}
                 </button>
@@ -3443,40 +3563,64 @@ function WithdrawPage({
         </div>
       )}
 
-      {/* Create Payment PIN popup (only when no PIN exists) */}
+      {/* Create Payment PIN for first-time users */}
       {showCreatePin && (
-        <div className="transfer-pin-overlay">
+        <div
+          className="transfer-pin-overlay"
+          onClick={() => {
+            if (!creatingPin) {
+              setShowCreatePin(false);
+              setAccountPassword("");
+              setNewPin("");
+              setConfirmPin("");
+              setCreateMessage("");
+            }
+          }}
+        >
           <div
             className="transfer-pin-modal"
             role="dialog"
             aria-modal="true"
             aria-labelledby="create-payment-pin-title"
+            onClick={(event) => event.stopPropagation()}
           >
             <div className="transfer-pin-icon" aria-hidden="true">
               🔐
             </div>
 
-            <h3 id="create-payment-pin-title">Create Payment PIN</h3>
-            <p>Set a 4–6 digit PIN to authorize withdrawals.</p>
+            <h3 id="create-payment-pin-title">
+              Create Payment PIN
+            </h3>
+
+            <p>
+              Set a 4–6 digit PIN. You can use the same PIN for
+              transfers and withdrawals.
+            </p>
 
             <form onSubmit={createPaymentPin}>
               <div className="transfer-field">
                 <label htmlFor="pin-account-password">
                   Account password
                 </label>
+
                 <input
                   id="pin-account-password"
                   type="password"
                   autoComplete="current-password"
                   value={accountPassword}
-                  onChange={(event) => setAccountPassword(event.target.value)}
+                  onChange={(event) =>
+                    setAccountPassword(event.target.value)
+                  }
                   required
                   disabled={creatingPin}
                 />
               </div>
 
               <div className="transfer-field">
-                <label htmlFor="new-payment-pin">New Payment PIN</label>
+                <label htmlFor="new-payment-pin">
+                  New Payment PIN
+                </label>
+
                 <input
                   id="new-payment-pin"
                   type="password"
@@ -3485,7 +3629,9 @@ function WithdrawPage({
                   maxLength={6}
                   value={newPin}
                   onChange={(event) =>
-                    setNewPin(event.target.value.replace(/\D/g, "").slice(0, 6))
+                    setNewPin(
+                      event.target.value.replace(/\D/g, "").slice(0, 6)
+                    )
                   }
                   placeholder="Enter 4–6 digits"
                   required
@@ -3497,6 +3643,7 @@ function WithdrawPage({
                 <label htmlFor="confirm-new-payment-pin">
                   Confirm Payment PIN
                 </label>
+
                 <input
                   id="confirm-new-payment-pin"
                   type="password"
