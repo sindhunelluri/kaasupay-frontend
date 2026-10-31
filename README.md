@@ -180,8 +180,7 @@ KaasuPay is an evolving project. Future improvements may include:
 ## 👩‍💻 Built By
 
 **Sindhu Nelluri**
-
-B.Tech — Information Technology | 2026
+Software Engineer
 
 [GitHub](https://github.com/sindhunelluri) · [Portfolio](https://sindhunelluri.github.io/Sindhu_Nelluri_Portfolio/)
 
