@@ -1,6 +1,8 @@
-import React,{ Fragment, useEffect, useRef, useState } from "react";
+﻿import React,{ Fragment, useEffect, useRef, useState } from "react";
 import "./App.css";
 import { apiUrl } from "./api";
+import SecurityPinPage from "./SecurityPinPage";
+import { apiErrorMessage } from "./apiErrors";
 
 
 function App() {
@@ -58,6 +60,13 @@ useEffect(() => {
   const [authLoading, setAuthLoading] = useState(false);
   const [user, setUser] = useState(null);
   const [walletBalance, setWalletBalance] = useState(null);
+
+  // Daily send limit (shown in the top bar) and "log out of all devices"
+  const [limits, setLimits] = useState(null);
+  const [limitsStatus, setLimitsStatus] = useState("idle"); // idle | loading | ready | error
+  const [limitsError, setLimitsError] = useState("");
+  const [showLimit, setShowLimit] = useState(false);
+  const [loggingOutAll, setLoggingOutAll] = useState(false);
   const [transactions, setTransactions] = useState([]);
   const [transactionPagination, setTransactionPagination] = useState({
   page: 1,
@@ -69,13 +78,13 @@ const [transactionLoading, setTransactionLoading] = useState(false);
 const [accountLoading, setAccountLoading] = useState(false);
 
   const menuItems = [
-    { name: "Dashboard", icon: "▦" },
-    { name: "Add Money", icon: "+" },
-    { name: "Transfer", icon: "↗" },
-    { name: "Bank Accounts", icon: "⌂" },
-    { name: "Withdraw", icon: "↓" },
-    { name: "Withdrawal History", icon: "◷" },
-    { name: "Transactions", icon: "↔" },
+    { name: "Dashboard", icon: "dashboard" },
+    { name: "Add Money", icon: "plus" },
+    { name: "Transfer", icon: "transfer" },
+    { name: "Bank Accounts", icon: "bank" },
+    { name: "Withdraw", icon: "withdraw" },
+    { name: "Transactions", icon: "swap" },
+    { name: "Security & PIN", icon: "shield" }
   ];
 
   async function handleAuth(formData) {
@@ -122,6 +131,75 @@ const [accountLoading, setAccountLoading] = useState(false);
     } finally {
       setAuthLoading(false);
     }
+  }
+
+  async function loadLimits() {
+    if (!token) return;
+    setLimitsStatus((current) => (current === "ready" ? current : "loading"));
+
+    try {
+      const response = await fetch(apiUrl("/api/v1/wallet/limits"), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          response.status === 404
+            ? "Limit service not found. Restart your backend."
+            : data.error || `Could not load limit (${response.status}).`
+        );
+      }
+
+      setLimits(data);
+      setLimitsStatus("ready");
+      setLimitsError("");
+    } catch (error) {
+      setLimitsStatus("error");
+      setLimitsError(error.message || "Could not reach the server.");
+    }
+  }
+
+  async function logoutAllDevices() {
+    if (
+      !window.confirm(
+        "Sign out of KaasuPay on every device, including this one?"
+      )
+    ) {
+      return;
+    }
+
+    setLoggingOutAll(true);
+
+    try {
+      const response = await fetch(apiUrl("/api/v1/user/logout-all"), {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || `Could not sign out (${response.status}).`);
+      }
+
+      logout();
+    } catch (error) {
+      window.alert(error.message);
+    } finally {
+      setLoggingOutAll(false);
+    }
+  }
+
+  // Load the limit after sign in, and whenever wallet data is refreshed.
+  useEffect(() => {
+    if (token) loadLimits();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  // After a password change the server sends a fresh token for THIS device.
+  function updateToken(newToken) {
+    sessionStorage.setItem("kaasupay_token", newToken);
+    setToken(newToken);
   }
 
   function logout() {
@@ -276,6 +354,8 @@ async function loadTransactions(page) {
 async function refreshWalletData() {
   if (!token) return;
 
+  loadLimits();
+
   const headers = {
     Authorization: `Bearer ${token}`,
   };
@@ -341,7 +421,7 @@ if (!token) {
             setAuthError("");
           }}
         >
-          ← Back to Overview
+          <Icon name="arrow-left" /> Back to Overview
         </button>
 
         <AuthScreen
@@ -408,7 +488,7 @@ if (!token) {
             aria-label="Close menu"
             onClick={() => setMobileMenuOpen(false)}
           >
-            ✕
+            <Icon name="close" />
           </button>
         </div>
 
@@ -425,28 +505,17 @@ if (!token) {
               }
               onClick={() => navigate(item.name)}
             >
-              <span className="nav-icon">{item.icon}</span>
+              <span className="nav-icon"><Icon name={item.icon} /></span>
               {item.name}
               {item.name === "Transactions" && (
-                <span className="nav-arrow">›</span>
+                <span className="nav-arrow"><Icon name="chevron-right" /></span>
               )}
             </button>
           ))}
         </nav>
 
         <div className="sidebar-bottom">
-          <div className="help-card">
-            <div className="help-icon">?</div>
-            <strong>Need help?</strong>
-            <p>We're here to help you.</p>
-            <button
-              onClick={() =>
-                (window.location.href = "mailto:support@example.com")
-              }
-            >
-              Contact support
-            </button>
-          </div>
+          
 
           
 <div className="profile-container" ref={profileContainerRef}>
@@ -468,7 +537,7 @@ if (!token) {
     </div>
 
     <span className="profile-chevron">
-      {showProfileMenu ? "⌃" : "⌄"}
+      <Icon name={showProfileMenu ? "chevron-up" : "chevron-down"} />
     </span>
   </button>
 
@@ -505,7 +574,7 @@ if (!token) {
         className="profile-logout"
         onClick={logout}
       >
-        <span>↪</span>
+        <Icon name="logout" />
         Logout
       </button>
     </div>
@@ -525,7 +594,7 @@ if (!token) {
               aria-expanded={mobileMenuOpen}
               onClick={() => setMobileMenuOpen(true)}
             >
-              ☰
+              <Icon name="menu" />
             </button>
             <div>
               <p className="breadcrumb">Workspace / {activePage}</p>
@@ -533,6 +602,93 @@ if (!token) {
           </div>
 
           <div className="topbar-right">
+            <div className="limit-wrap">
+              <button
+                type="button"
+                className={`topbar-chip limit-chip ${limitsStatus === "error" ? "is-error" : ""}`}
+                onClick={() => {
+                  if (limitsStatus === "error") loadLimits();
+                  setShowLimit((open) => !open);
+                }}
+                aria-expanded={showLimit}
+                title="Daily send limit"
+              >
+                <span className="chip-icon" aria-hidden="true">◔</span>
+                <span className="chip-text">
+                  {limitsStatus === "ready" && limits
+                    ? `₹${(limits.leftToday / 100).toLocaleString("en-IN", {
+                        maximumFractionDigits: 2,
+                      })} left today`
+                    : limitsStatus === "error"
+                      ? "Limit unavailable"
+                      : "Loading limit…"}
+                </span>
+              </button>
+
+              {showLimit && (
+                <>
+                  <button
+                    type="button"
+                    className="limit-backdrop"
+                    aria-label="Close daily limit"
+                    onClick={() => setShowLimit(false)}
+                  />
+                  <div className="limit-pop" role="dialog" aria-label="Daily send limit">
+                    <h4>Daily send limit</h4>
+                    {limitsStatus === "ready" && limits ? (
+                      <>
+                        <div className="sec-meter">
+                          <span
+                            style={{
+                              width: `${Math.min(
+                                100,
+                                Math.round((limits.usedToday / limits.dailyLimit) * 100)
+                              )}%`,
+                            }}
+                          />
+                        </div>
+                        <div className="sec-limit-row">
+                          <span>
+                            Used ₹{(limits.usedToday / 100).toLocaleString("en-IN")} of ₹
+                            {(limits.dailyLimit / 100).toLocaleString("en-IN")}
+                          </span>
+                          <strong>
+                            ₹{(limits.leftToday / 100).toLocaleString("en-IN")} left
+                          </strong>
+                        </div>
+                        <p className="sec-hint">
+                          Sends and bank withdrawals count together. Resets at midnight
+                          India time.
+                        </p>
+                      </>
+                    ) : limitsStatus === "error" ? (
+                      <>
+                        <p className="sec-note bad">{limitsError}</p>
+                        <button type="button" className="sec-retry" onClick={loadLimits}>
+                          Try again
+                        </button>
+                      </>
+                    ) : (
+                      <p className="sec-hint">Loading your limit…</p>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <button
+              type="button"
+              className="topbar-chip logout-chip"
+              onClick={logoutAllDevices}
+              disabled={loggingOutAll}
+              title="Sign out on every device"
+            >
+              <span className="chip-icon" aria-hidden="true">⎋</span>
+              <span className="chip-text">
+                {loggingOutAll ? "Signing out…" : "Log out of all devices"}
+              </span>
+            </button>
+
             <span className="secure-label">
               <span className="secure-dot" />
               Secure wallet
@@ -558,7 +714,7 @@ if (!token) {
           <>
             <section className="welcome">
               <div>
-                <h2>Welcome, {user?.firstName || "User"} 👋</h2>
+                <h2>Welcome back, {user?.firstName || "User"}</h2>
                 <p>Manage your wallet and transactions in one place.</p>
               </div>
               <span className="date-label">
@@ -589,7 +745,7 @@ if (!token) {
                     onClick={() => setShowBalance(!showBalance)}
                     aria-label="Toggle balance visibility"
                   >
-                    {showBalance ? "◉" : "◎"}
+                    <Icon name={showBalance ? "eye" : "eye-off"} />
                   </button>
                 </div>
 
@@ -606,7 +762,7 @@ if (!token) {
                     className="light-button"
                     onClick={() => navigate("Transfer")}
                   >
-                    ↗ Transfer
+                    <Icon name="transfer" /> Transfer
                   </button>
                 </div>
               </div>
@@ -614,7 +770,7 @@ if (!token) {
               <div className="stat-card">
                 <div className="stat-top">
                   <span>Total top-ups</span>
-                  <span className="stat-icon green">↓</span>
+                  <span className="stat-icon green"><Icon name="withdraw" /></span>
                 </div>
                 <h2>₹{totalTopups.toFixed(2)}</h2>
                 <p>From the currently loaded records</p>
@@ -623,7 +779,7 @@ if (!token) {
               <div className="stat-card">
                 <div className="stat-top">
                   <span>Transactions</span>
-                  <span className="stat-icon purple">↔</span>
+                  <span className="stat-icon purple"><Icon name="swap" /></span>
                 </div>
                 <h2>{transactionPagination.total}</h2>
                 <p>Total transaction records</p>
@@ -656,43 +812,43 @@ if (!token) {
                     <strong>Add money</strong>
                     <small>Top up your wallet</small>
                   </span>
-                  <span className="quick-arrow">›</span>
+                  <span className="quick-arrow"><Icon name="chevron-right" /></span>
                 </button>
 
                 <button onClick={() => navigate("Transfer")}>
-                  <span className="quick-icon blue">↗</span>
+                  <span className="quick-icon blue"><Icon name="transfer" /></span>
                   <span>
                     <strong>Transfer money</strong>
                     <small>Send to another user</small>
                   </span>
-                  <span className="quick-arrow">›</span>
+                  <span className="quick-arrow"><Icon name="chevron-right" /></span>
                 </button>
 
                 <button onClick={() => navigate("Transactions")}>
-                  <span className="quick-icon purple">↔</span>
+                  <span className="quick-icon purple"><Icon name="swap" /></span>
                   <span>
                     <strong>Transaction history</strong>
                     <small>Review wallet activity</small>
                   </span>
-                  <span className="quick-arrow">›</span>
+                  <span className="quick-arrow"><Icon name="chevron-right" /></span>
                 </button>
 
                 <button onClick={() => navigate("Bank Accounts")}>
-                  <span className="quick-icon blue">⌂</span>
+                  <span className="quick-icon blue"><Icon name="bank" /></span>
                   <span>
                     <strong>Bank accounts</strong>
                     <small>Manage saved bank details</small>
                   </span>
-                  <span className="quick-arrow">›</span>
+                  <span className="quick-arrow"><Icon name="chevron-right" /></span>
                 </button>
 
                 <button onClick={() => navigate("Withdraw")}>
-                  <span className="quick-icon orange">↓</span>
+                  <span className="quick-icon orange"><Icon name="withdraw" /></span>
                   <span>
                     <strong>Withdraw money</strong>
                     <small>Review withdrawal requirements</small>
                   </span>
-                  <span className="quick-arrow">›</span>
+                  <span className="quick-arrow"><Icon name="chevron-right" /></span>
                 </button>
               </div>
             </section>
@@ -729,10 +885,6 @@ if (!token) {
     showBalance={showBalance}
     setShowBalance={setShowBalance}
   />
-)}
-
-{activePage === "Withdrawal History" && (
-  <WithdrawalHistoryPage token={token} />
 )}
 
         {activePage === "Transactions" && (
@@ -799,7 +951,19 @@ if (!token) {
           </section>
         )}
 
-        <footer className="footer">
+        {activePage === "Security & PIN" && (
+  <SecurityPinPage
+    token={token}
+    hasPaymentPin={Boolean(user?.hasPaymentPin)}
+    onTokenChange={updateToken}
+    onPinChanged={() =>
+      setUser((current) =>
+        current ? { ...current, hasPaymentPin: true } : current
+      )
+    }
+  />
+)}
+<footer className="footer">
           <span>© 2026 KaasuPay</span>
           <span>Manage your money with confidence.</span>
         </footer>
@@ -850,7 +1014,7 @@ function LandingPage({ onSignIn, onCreateAccount }) {
     aria-expanded={mobileMenuOpen}
     onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
   >
-    <span>{mobileMenuOpen ? "✕" : "☰"}</span>
+    <span><Icon name={mobileMenuOpen ? "close" : "menu"} /></span>
   </button>
 </header>
 
@@ -883,8 +1047,8 @@ function LandingPage({ onSignIn, onCreateAccount }) {
             </div>
 
             <div className="landing-trust-note">
-              <span>✓</span> Wallet activity in one place
-              <span>✓</span> Transaction history
+              <span><Icon name="check" /></span> Wallet activity in one place
+              <span><Icon name="check" /></span> Transaction history
             </div>
           </div>
 
@@ -896,7 +1060,7 @@ function LandingPage({ onSignIn, onCreateAccount }) {
               <div className="landing-wallet-top">
                 <span className="landing-logo">K</span>
                 <span>KAASUPAY WALLET</span>
-                <span className="landing-card-dot">●</span>
+                <span className="landing-card-dot" aria-hidden="true" />
               </div>
 
               <p>Digital wallet</p>
@@ -909,7 +1073,7 @@ function LandingPage({ onSignIn, onCreateAccount }) {
             </div>
 
             <div className="landing-floating-card landing-float-top">
-              <span className="landing-float-icon">↗</span>
+              <span className="landing-float-icon"><Icon name="transfer" /></span>
               <div>
                 <strong>Easy transfers</strong>
                 <small>Send to another user</small>
@@ -917,7 +1081,7 @@ function LandingPage({ onSignIn, onCreateAccount }) {
             </div>
 
             <div className="landing-floating-card landing-float-bottom">
-              <span className="landing-float-icon">↔</span>
+              <span className="landing-float-icon"><Icon name="swap" /></span>
               <div>
                 <strong>Track activity</strong>
                 <small>View your transactions</small>
@@ -944,19 +1108,19 @@ function LandingPage({ onSignIn, onCreateAccount }) {
             </article>
 
             <article className="landing-feature">
-              <span className="landing-feature-icon">＋</span>
+              <span className="landing-feature-icon"><Icon name="plus" /></span>
               <h3>Add Money</h3>
               <p>Create a top-up order and use available payment options.</p>
             </article>
 
             <article className="landing-feature">
-              <span className="landing-feature-icon">↗</span>
+              <span className="landing-feature-icon"><Icon name="transfer" /></span>
               <h3>Transfer Funds</h3>
               <p>Send money to another KaasuPay user.</p>
             </article>
 
             <article className="landing-feature">
-              <span className="landing-feature-icon">↔</span>
+              <span className="landing-feature-icon"><Icon name="swap" /></span>
               <h3>Transaction History</h3>
               <p>Review your recorded wallet transactions.</p>
             </article>
@@ -978,7 +1142,7 @@ function LandingPage({ onSignIn, onCreateAccount }) {
     <article className="landing-step-card">
       <div className="landing-step-top">
         <span className="landing-step-number">01</span>
-        <span className="landing-step-icon">👤</span>
+        <span className="landing-step-icon"><Icon name="user" /></span>
       </div>
 
       <h3>Select Recipient & Amount</h3>
@@ -988,9 +1152,9 @@ function LandingPage({ onSignIn, onCreateAccount }) {
       </p>
 
       <div className="landing-step-details">
-        <div>✓ Select the recipient</div>
-        <div>✓ Enter the transfer amount</div>
-        <div>✓ Review the details</div>
+        <div><Icon name="check" /> Select the recipient</div>
+        <div><Icon name="check" /> Enter the transfer amount</div>
+        <div><Icon name="check" /> Review the details</div>
       </div>
 
       <span className="landing-step-link">
@@ -1001,7 +1165,7 @@ function LandingPage({ onSignIn, onCreateAccount }) {
     <article className="landing-step-card">
       <div className="landing-step-top">
         <span className="landing-step-number">02</span>
-        <span className="landing-step-icon">🔐</span>
+        <span className="landing-step-icon"><Icon name="lock" /></span>
       </div>
 
       <h3>Choose & Authorize</h3>
@@ -1011,9 +1175,9 @@ function LandingPage({ onSignIn, onCreateAccount }) {
       </p>
 
       <div className="landing-step-details">
-        <div>✓ Review transaction options</div>
-        <div>✓ Verify the transfer details</div>
-        <div>✓ Authorize when prompted</div>
+        <div><Icon name="check" /> Review transaction options</div>
+        <div><Icon name="check" /> Verify the transfer details</div>
+        <div><Icon name="check" /> Authorize when prompted</div>
       </div>
 
       <span className="landing-step-link">
@@ -1024,7 +1188,7 @@ function LandingPage({ onSignIn, onCreateAccount }) {
     <article className="landing-step-card">
       <div className="landing-step-top">
         <span className="landing-step-number">03</span>
-        <span className="landing-step-icon">🧾</span>
+        <span className="landing-step-icon"><Icon name="receipt" /></span>
       </div>
 
       <h3>Transfer & Receipt</h3>
@@ -1034,9 +1198,9 @@ function LandingPage({ onSignIn, onCreateAccount }) {
       </p>
 
       <div className="landing-step-details">
-        <div>✓ Check the transaction status</div>
-        <div>✓ Review the transfer record</div>
-        <div>✓ Keep the receipt details</div>
+        <div><Icon name="check" /> Check the transaction status</div>
+        <div><Icon name="check" /> Review the transfer record</div>
+        <div><Icon name="check" /> Keep the receipt details</div>
       </div>
 
       <span className="landing-step-link">
@@ -1063,7 +1227,7 @@ function LandingPage({ onSignIn, onCreateAccount }) {
   {/* Three cards below the heading */}
   <div className="integrity-grid">
     <article className="integrity-card">
-      <div className="integrity-icon">🛡️</div>
+      <div className="integrity-icon"><Icon name="shield" /></div>
       <span className="integrity-label">01 · TRANSACTION CONTROL</span>
       <h3>Daily Transfer Limit</h3>
       <p>
@@ -1073,7 +1237,7 @@ function LandingPage({ onSignIn, onCreateAccount }) {
     </article>
 
     <article className="integrity-card">
-      <div className="integrity-icon">🔐</div>
+      <div className="integrity-icon"><Icon name="lock" /></div>
       <span className="integrity-label">02 · AUTHORIZATION</span>
       <h3>Payment PIN</h3>
       <p>
@@ -1083,7 +1247,7 @@ function LandingPage({ onSignIn, onCreateAccount }) {
     </article>
 
     <article className="integrity-card">
-      <div className="integrity-icon">🏦</div>
+      <div className="integrity-icon"><Icon name="bank" /></div>
       <span className="integrity-label">03 · DATA PRIVACY</span>
       <h3>Encrypted Bank Details</h3>
       <p>
@@ -1421,13 +1585,13 @@ function AddMoneyForm({ token, onSuccess }) {
 
             <div className="add-money-method">
               <div className="add-money-method-icon">
-                <span>▣</span>
+                <span><Icon name="card" /></span>
               </div>
               <div className="add-money-method-copy">
                 <strong>Razorpay Checkout</strong>
                 <small>Cards and other available methods</small>
               </div>
-              <span className="add-money-method-check">✓</span>
+              <span className="add-money-method-check"><Icon name="check" /></span>
             </div>
 
             <select
@@ -1446,11 +1610,11 @@ function AddMoneyForm({ token, onSuccess }) {
               disabled={loading || paying}
             >
               {loading ? "Creating order..." : "Create Payment Order"}
-              {!loading && <span>→</span>}
+              {!loading && <Icon name="arrow-right" />}
             </button>
 
             <p className="add-money-security">
-              <span>🔒</span>
+              <Icon name="lock" />
               Your wallet is credited only after payment verification.
             </p>
           </form>
@@ -1473,7 +1637,7 @@ function AddMoneyForm({ token, onSuccess }) {
       {/* Secure top-up now appears below the form */}
       <aside className="add-money-info-panel">
         <div className="add-money-info-heading">
-          <div className="add-money-info-icon">✓</div>
+          <div className="add-money-info-icon"><Icon name="check" /></div>
           <div>
             <h3>Secure top-up</h3>
             <p>How it works</p>
@@ -1534,7 +1698,7 @@ function AddMoneyForm({ token, onSuccess }) {
               onClick={() => setShowOrderModal(false)}
               aria-label="Close order details"
             >
-              ×
+              <Icon name="close" />
             </button>
 
             <div className="add-money-order-heading">
@@ -1684,7 +1848,7 @@ function AuthScreen({ mode, setMode, onSubmit, error, loading }) {
 
           <div className="auth-heading">
             <div className="auth-heading-icon">
-              {mode === "signin" ? "👋" : "✨"}
+              <Icon name={mode === "signin" ? "user" : "user-plus"} />
             </div>
 
             <h2>
@@ -1802,7 +1966,7 @@ function AuthScreen({ mode, setMode, onSubmit, error, loading }) {
           </p>
 
           <div className="auth-security">
-            <span>🔒</span>
+            <Icon name="lock" />
             <span>Your account is protected by KaasuPay authentication.</span>
           </div>
         </div>
@@ -1961,11 +2125,7 @@ function TransferForm({
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(
-          data.message ||
-            data.error ||
-            `Transfer failed (${response.status}).`
-        );
+        throw new Error(apiErrorMessage(response, data, "Transfer failed"));
       }
 
       setMessage(
@@ -1998,7 +2158,7 @@ function TransferForm({
     <section className="transfer-page">
       <header className="transfer-page-header">
         <div className="transfer-header-icon" aria-hidden="true">
-          ↗
+          <Icon name="transfer" />
         </div>
 
         <div>
@@ -2038,7 +2198,7 @@ function TransferForm({
             aria-label={showBalance ? "Hide balance" : "Show balance"}
             aria-pressed={showBalance}
           >
-            {showBalance ? "◉" : "◎"}
+            <Icon name={showBalance ? "eye" : "eye-off"} />
           </button>
         </div>
 
@@ -2057,7 +2217,7 @@ function TransferForm({
           </div>
 
           <div className="transfer-details-icon" aria-hidden="true">
-            ⇄
+            <Icon name="swap" />
           </div>
         </div>
 
@@ -2169,7 +2329,7 @@ function TransferForm({
             type="submit"
             disabled={!canSubmit}
           >
-            Send Money ↗
+            Send Money <Icon name="transfer" />
           </button>
 
           <p className="transfer-security-note">
@@ -2199,7 +2359,7 @@ function TransferForm({
             onClick={(event) => event.stopPropagation()}
           >
             <div className="transfer-pin-icon" aria-hidden="true">
-              🔒
+              <Icon name="lock" />
             </div>
 
             <h3 id="transfer-pin-title">Confirm Transfer</h3>
@@ -2567,7 +2727,7 @@ function TransactionTable({ items = [] }) {
                     <td>
                       <div className="transaction-name">
                         <span className="transaction-icon">
-                          {isCredit ? "↓" : "↗"}
+                          <Icon name={isCredit ? "withdraw" : "transfer"} />
                         </span>
                         <strong>{getTitle(item)}</strong>
                       </div>
@@ -2747,21 +2907,21 @@ function BankAccountsPage({ token }) {
     <section style={styles.page}>
       <header style={styles.hero}>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <div style={styles.heroIcon} aria-hidden="true">⌂</div>
+          <div style={styles.heroIcon} aria-hidden="true"><Icon name="bank" /></div>
           <div>
             <h2 style={styles.heroTitle}>Bank accounts</h2>
             <p style={styles.subtitle}>Manage your saved accounts for future withdrawal requests.</p>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 11px", borderRadius: 999, background: "#fff", border: "1px solid #fed7aa", color: "#9a3412", fontSize: 12, fontWeight: 700 }}>
-          <span aria-hidden="true">✓</span> Private account details
+          <Icon name="check" /> Private account details
         </div>
       </header>
 
       <div className="bank-account-layout" style={styles.layout}>
         <div style={styles.panel}>
           <div style={{ display: "flex", alignItems: "flex-start", gap: 11 }}>
-            <div style={{ ...styles.bankIcon, width: 38, height: 38, fontSize: 18 }}>＋</div>
+            <div style={{ ...styles.bankIcon, width: 38, height: 38, fontSize: 18 }}><Icon name="plus" /></div>
             <div>
               <h3 style={styles.panelTitle}>Add a bank account</h3>
               <p style={styles.panelText}>Enter the details exactly as registered with your bank.</p>
@@ -2777,7 +2937,7 @@ function BankAccountsPage({ token }) {
             <label style={styles.label}>IFSC code
               <input style={{ ...styles.input, textTransform: "uppercase" }} value={ifsc} onChange={e => setIfsc(e.target.value.toUpperCase())} pattern="[A-Z]{4}0[A-Z0-9]{6}" maxLength={11} required autoComplete="off" placeholder="e.g. HDFC0001234" />
             </label>
-            <button style={styles.primary} type="submit" disabled={saving}>{saving ? "Saving account…" : "＋  Save bank account"}</button>
+            <button style={styles.primary} type="submit" disabled={saving}>{saving ? "Saving account…" : <><Icon name="plus" /> Save bank account</>}</button>
           </form>
           {message && <p style={styles.status} role="status">{message}</p>}
           <p style={styles.hint}>Your account number is masked in the saved-account list. Never share your banking credentials or OTP.</p>
@@ -2789,13 +2949,13 @@ function BankAccountsPage({ token }) {
               <h3 style={styles.panelTitle}>Saved accounts <span style={{ color: "#9ca3af", fontWeight: 500 }}>({accounts.length})</span></h3>
               <p style={{ ...styles.panelText, marginBottom: 0 }}>Choose from these accounts when preparing a withdrawal.</p>
             </div>
-            <button style={styles.secondary} type="button" onClick={loadAccounts} disabled={loading}>{loading ? "Loading…" : "↻ Refresh"}</button>
+            <button style={styles.secondary} type="button" onClick={loadAccounts} disabled={loading}>{loading ? "Loading…" : <><Icon name="refresh" /> Refresh</>}</button>
           </div>
           {loading ? (
             <div style={styles.empty}><p style={{ margin: 0, color: "#6b7280", fontSize: 13 }}>Loading your saved accounts…</p></div>
           ) : accounts.length === 0 ? (
             <div style={styles.empty}>
-              <div style={{ ...styles.bankIcon, width: 50, height: 50, margin: "0 auto 12px", fontSize: 23 }}>⌂</div>
+              <div style={{ ...styles.bankIcon, width: 50, height: 50, margin: "0 auto 12px", fontSize: 23 }}><Icon name="bank" /></div>
               <p style={{ margin: "0 0 6px", color: "#374151", fontSize: 14, fontWeight: 700 }}>No bank accounts yet</p>
               <p style={{ margin: 0, color: "#6b7280", fontSize: 12, lineHeight: 1.5 }}>Add your first account using the form. Saved account numbers will be masked here.</p>
             </div>
@@ -2804,7 +2964,7 @@ function BankAccountsPage({ token }) {
               {accounts.map(account => (
                 <article key={account.id} style={styles.account}>
                   <div style={styles.accountTop}>
-                    <div style={styles.bankIcon} aria-hidden="true">▤</div>
+                    <div style={styles.bankIcon} aria-hidden="true"><Icon name="bank" /></div>
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <p style={styles.holder}>{account.holderName}</p>
                       <p style={styles.small}>Saved bank account</p>
@@ -3070,7 +3230,7 @@ function WithdrawPage({
     setMessage("");
     setMessageType("");
 
-    if (!/^\d{4,6}$/.test(pin)) {
+    if (!/^(\d{4}|\d{6})$/.test(pin)) {
       showError("Please enter your 4–6 digit Payment PIN.");
       return;
     }
@@ -3106,16 +3266,13 @@ function WithdrawPage({
           return;
         }
 
-        throw new Error(
-          data.error ||
-            `Withdrawal request failed (${response.status}).`
-        );
+        throw new Error(apiErrorMessage(response, data, "Withdrawal request failed"));
       }
 
       setMessage(
         `Withdrawal request accepted. Reference: ${
           data.withdrawal?.reference || "Pending"
-        }. Check Withdrawal History for updates.`
+        }. It will be processed shortly.`
       );
 
       setMessageType("success");
@@ -3149,7 +3306,7 @@ function WithdrawPage({
       return;
     }
 
-    if (!/^\d{4,6}$/.test(newPin)) {
+    if (!/^(\d{4}|\d{6})$/.test(newPin)) {
       setCreateMessage("Enter a PIN containing 4 to 6 digits.");
       return;
     }
@@ -3225,7 +3382,7 @@ function WithdrawPage({
     <section className="transfer-page">
       <header className="transfer-page-header">
         <div className="transfer-header-icon" aria-hidden="true">
-          ↓
+          <Icon name="withdraw" />
         </div>
 
         <div>
@@ -3268,7 +3425,7 @@ function WithdrawPage({
               aria-label={showBalance ? "Hide balance" : "Show balance"}
               aria-pressed={showBalance}
             >
-              {showBalance ? "◉" : "◎"}
+              <Icon name={showBalance ? "eye" : "eye-off"} />
             </button>
           )}
         </div>
@@ -3288,7 +3445,7 @@ function WithdrawPage({
           </div>
 
           <div className="transfer-details-icon" aria-hidden="true">
-            ⇄
+            <Icon name="swap" />
           </div>
         </div>
 
@@ -3297,7 +3454,7 @@ function WithdrawPage({
         ) : accounts.length === 0 ? (
           <div className="withdraw-empty-state">
             <div className="withdraw-empty-icon" aria-hidden="true">
-              ▤
+              <Icon name="bank" />
             </div>
             <h4>No bank accounts linked</h4>
             <p>Link a bank account before requesting a withdrawal.</p>
@@ -3344,7 +3501,7 @@ function WithdrawPage({
                     className="withdraw-bank-symbol"
                     aria-hidden="true"
                   >
-                    ▤
+                    <Icon name="bank" />
                   </div>
 
                   <div className="withdraw-bank-info">
@@ -3445,7 +3602,7 @@ function WithdrawPage({
               type="submit"
               disabled={!canContinue}
             >
-              {checkingPin ? "Checking..." : "Continue ↓"}
+              {checkingPin ? "Checking..." : <>Continue <Icon name="withdraw" /></>}
             </button>
 
             <p className="transfer-security-note">
@@ -3476,7 +3633,7 @@ function WithdrawPage({
             onClick={(event) => event.stopPropagation()}
           >
             <div className="transfer-pin-icon" aria-hidden="true">
-              🔒
+              <Icon name="lock" />
             </div>
 
             <h3 id="withdraw-pin-title">Confirm Withdrawal</h3>
@@ -3552,7 +3709,7 @@ function WithdrawPage({
                   type="submit"
                   className="transfer-submit"
                   disabled={
-                    submitting || !/^\d{4,6}$/.test(pin)
+                    submitting || !/^(\d{4}|\d{6})$/.test(pin)
                   }
                 >
                   {submitting ? "Processing..." : "Confirm Withdrawal"}
@@ -3585,7 +3742,7 @@ function WithdrawPage({
             onClick={(event) => event.stopPropagation()}
           >
             <div className="transfer-pin-icon" aria-hidden="true">
-              🔐
+              <Icon name="key" />
             </div>
 
             <h3 id="create-payment-pin-title">
@@ -3690,7 +3847,7 @@ function WithdrawPage({
                   disabled={
                     creatingPin ||
                     !accountPassword ||
-                    !/^\d{4,6}$/.test(newPin) ||
+                    !/^(\d{4}|\d{6})$/.test(newPin) ||
                     newPin !== confirmPin
                   }
                 >
@@ -3705,39 +3862,53 @@ function WithdrawPage({
   );
 }
 
+/* Lightweight inline SVG icon set (stroke icons, inherit colour and size from CSS) */
+const ICON_PATHS = {
+  dashboard: (<><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>),
+  plus: (<><path d="M12 5v14" /><path d="M5 12h14" /></>),
+  transfer: (<><path d="M7 17 17 7" /><path d="M8 7h9v9" /></>),
+  withdraw: (<><path d="M12 4v14" /><path d="m6 12 6 6 6-6" /></>),
+  swap: (<><path d="M4 8h14" /><path d="m14 4 4 4-4 4" /><path d="M20 16H6" /><path d="m10 12-4 4 4 4" /></>),
+  bank: (<><path d="M3 10 12 4l9 6" /><path d="M5 10v8" /><path d="M10 10v8" /><path d="M14 10v8" /><path d="M19 10v8" /><path d="M3 21h18" /></>),
+  shield: (<><path d="M12 3 5 6v5c0 4.5 3 8.2 7 10 4-1.8 7-5.5 7-10V6l-7-3Z" /><path d="m9 12 2 2 4-4" /></>),
+  lock: (<><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></>),
+  key: (<><circle cx="8" cy="15" r="4" /><path d="m11 12 9-9" /><path d="m16 7 3 3" /></>),
+  eye: (<><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></>),
+  "eye-off": (<><path d="M3 3l18 18" /><path d="M10.6 6.1A9.8 9.8 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-3.2 3.9" /><path d="M6.6 6.7A17 17 0 0 0 2 12s3.5 6 10 6a9.7 9.7 0 0 0 4-.8" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></>),
+  "chevron-right": <path d="m9 6 6 6-6 6" />,
+  "chevron-up": <path d="m6 15 6-6 6 6" />,
+  "chevron-down": <path d="m6 9 6 6 6-6" />,
+  "arrow-right": (<><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></>),
+  "arrow-left": (<><path d="M19 12H5" /><path d="m11 6-6 6 6 6" /></>),
+  logout: (<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /></>),
+  menu: (<><path d="M4 6h16" /><path d="M4 12h16" /><path d="M4 18h16" /></>),
+  close: (<><path d="M6 6l12 12" /><path d="M18 6 6 18" /></>),
+  check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
+  user: (<><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></>),
+  "user-plus": (<><circle cx="10" cy="8" r="4" /><path d="M2 21a8 8 0 0 1 16 0" /><path d="M19 8v6" /><path d="M16 11h6" /></>),
+  receipt: (<><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z" /><path d="M9 8h6" /><path d="M9 12h6" /></>),
+  card: (<><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18" /><path d="M7 15h4" /></>),
+  refresh: (<><path d="M20 11a8 8 0 0 0-14.5-4" /><path d="M5 3v4h4" /><path d="M4 13a8 8 0 0 0 14.5 4" /><path d="M19 21v-4h-4" /></>),
+};
 
-function WithdrawalHistoryPage({ token }) {
-  const [withdrawals, setWithdrawals] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
-
-  async function loadHistory() {
-    setLoading(true); setMessage("");
-    try {
-      const response = await fetch(apiUrl("/api/v1/wallet/withdraw"), {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Could not load withdrawal history.");
-      setWithdrawals(data.withdrawals || []);
-    } catch (error) {
-      setMessage(error.message || "Could not load withdrawal history.");
-    } finally { setLoading(false); }
-  }
-
-  useEffect(() => { loadHistory(); }, [token]);
+function Icon({ name, size = "1em", className = "" }) {
   return (
-    <section className="content-card">
-      <div className="section-heading"><div><h2>Withdrawal History</h2><p>Recent withdrawal requests and their current statuses.</p></div><button className="light-button" type="button" onClick={loadHistory} disabled={loading}>Refresh</button></div>
-      {loading ? <p className="form-help">Loading withdrawal history...</p> : message ? <p className="form-help error-text" role="alert">{message}</p> : withdrawals.length === 0 ? <p className="form-help">No withdrawal requests found.</p> : (
-        <div className="table-wrap"><table><thead><tr><th>Reference</th><th>Amount</th><th>Status</th><th>Bank reference</th><th>Date</th></tr></thead><tbody>
-          {withdrawals.map(item => <tr key={item._id || item.reference}><td>{item.reference || "—"}</td><td>₹{(Number(item.amount || 0) / 100).toFixed(2)}</td><td>{item.status || "Unknown"}</td><td>{item.bankRef || "—"}</td><td>{item.createdAt ? new Date(item.createdAt).toLocaleString("en-IN") : "—"}</td></tr>)}
-        </tbody></table></div>
-      )}
-      <p className="form-help">PENDING means accepted for processing, not confirmed as paid to the bank.</p>
-    </section>
+    <svg
+      className={`icon ${className}`.trim()}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {ICON_PATHS[name]}
+    </svg>
   );
 }
-
 
 export default App;
