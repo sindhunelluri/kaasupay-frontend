@@ -3,6 +3,8 @@ import "./App.css";
 import { apiUrl } from "./api";
 import SecurityPinPage from "./SecurityPinPage";
 import { apiErrorMessage } from "./apiErrors";
+import MoneyRequestsPage from "./MoneyRequestsPage";
+import RecentContacts, { getRecentContacts } from "./RecentContacts.jsx";
 
 
 function App() {
@@ -54,6 +56,24 @@ useEffect(() => {
   const [token, setToken] = useState(
     () => sessionStorage.getItem("kaasupay_token") || ""
   );
+  
+const [theme, setTheme] = useState(() => {
+  const saved = localStorage.getItem("kaasupay-theme");
+  if (saved === "dark" || saved === "light") return saved;
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+});
+
+
+useEffect(() => {
+  // Dark mode only applies once the user is signed in (the landing page stays light).
+  document.documentElement.dataset.theme = token ? theme : "light";
+  try {
+    localStorage.setItem("kaasupay-theme", theme);
+  } catch {
+    // storage blocked: the theme still works for this visit
+  }
+}, [theme, token]);
+
   const [authMode, setAuthMode] = useState("signin");
   const [showAuthScreen, setShowAuthScreen] = useState(false);
   const [authError, setAuthError] = useState("");
@@ -83,6 +103,7 @@ const [accountLoading, setAccountLoading] = useState(false);
     { name: "Transfer", icon: "transfer" },
     { name: "Bank Accounts", icon: "bank" },
     { name: "Withdraw", icon: "withdraw" },
+    { name: "Money Requests", icon: "swap" },
     { name: "Transactions", icon: "swap" },
     { name: "Security & PIN", icon: "shield" }
   ];
@@ -467,6 +488,7 @@ if (!token) {
   const totalTopups = transactions
     .filter((item) => item.type === "TOPUP")
     .reduce((sum, item) => sum + Number(item.amount || 0), 0) / 100;
+  const recentContacts = getRecentContacts(transactions, txDirection);
 
   return (
     <div className="app-layout">
@@ -602,6 +624,15 @@ if (!token) {
           </div>
 
           <div className="topbar-right">
+            <button
+              type="button"
+              className="topbar-chip theme-toggle"
+              onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              title={theme === "dark" ? "Light mode" : "Dark mode"}
+              >
+                <span aria-hidden="true">{theme === "dark" ? "☀" : "☾"}</span>
+              </button>
             <div className="limit-wrap">
               <button
                 type="button"
@@ -869,6 +900,7 @@ if (!token) {
     showBalance={showBalance}
     setShowBalance={setShowBalance}
     onSuccess={refreshWalletData}
+    contacts={recentContacts}
   />
 )}
 
@@ -886,9 +918,16 @@ if (!token) {
     setShowBalance={setShowBalance}
   />
 )}
+{activePage === "Money Requests" && (
+  <MoneyRequestsPage
+    token={token}
+    onSuccess={refreshWalletData}
+    contacts={recentContacts}
+  />
+)}
 
         {activePage === "Transactions" && (
-          <section className="content-card">
+          <section className="content-card transactions-page">
             <div className="section-heading">
               <div>
                 <h2>Transaction history</h2>
@@ -1255,18 +1294,130 @@ function LandingPage({ onSignIn, onCreateAccount }) {
         appropriate encryption and secure data handling.
       </p>
     </article>
+
+    <article className="integrity-card">
+      <div className="integrity-icon"><Icon name="logout" /></div>
+      <span className="integrity-label">04 · SESSION CONTROL</span>
+      <h3>All-Device Sign Out</h3>
+      <p>
+        Lost your phone or used a public computer? Sign out of
+        every active device at once from your settings.
+      </p>
+    </article>
+
   </div>
 </section>
 
 
+{/* ---------- WHAT IF SOMETHING GOES WRONG ---------- */}
+        <section className="kp-safety" id="safety">
+          <div className="landing-section-heading">
+            <span className="landing-eyebrow">YOUR SAFETY NET</span>
+            <h2>What if something goes wrong?</h2>
+            <p>
+              Good money apps stay calm when things break. Here is what
+              KaasuPay does in six messy moments.
+            </p>
+          </div>
 
-        <section className="landing-bottom-cta">
-          <h2>Ready to get started?</h2>
-          <p>Create your account to access your KaasuPay wallet.</p>
-          <button className="landing-cta" onClick={onCreateAccount}>
-            Create Account →
-          </button>
+          <div className="kp-cases">
+            {[
+              ["user", "A friend borrows your unlocked phone", "Sending or withdrawing needs your payment PIN. Three wrong tries lock it for 15 minutes."],
+              ["swap", "You tap Send twice", "Both taps carry the same request key, so the money moves only once."],
+              ["refresh", "Your internet drops halfway", "A payment finishes for both wallets or not at all. There is no half-sent money."],
+              ["bank", "The bank is slow or down", "Your withdrawal is retried automatically. If the bank finally refuses, the money comes back to your wallet."],
+              ["logout", "You lose your phone", "Tap Log out of all devices in the top bar and every old session stops working."],
+              ["receipt", "You want to know what happened", "Your history shows every top-up, payment, withdrawal and refund."],
+            ].map(([icon, ifText, thenText]) => (
+              <article className="kp-case" key={ifText}>
+                <div className="kp-case-if">
+                  <span className="kp-case-icon"><Icon name={icon} /></span>
+                  <div>
+                    <small>If</small>
+                    <h3>{ifText}</h3>
+                  </div>
+                </div>
+                <span className="kp-case-arrow" aria-hidden="true">→</span>
+                <div className="kp-case-then">
+                  <small>Then</small>
+                  <p>{thenText}</p>
+                </div>
+              </article>
+            ))}
+          </div>
         </section>
+
+{/* ---------- FAQ ---------- */}
+        <section className="kp-faq" id="faq">
+          <div className="landing-section-heading">
+            <span className="landing-eyebrow">QUICK ANSWERS</span>
+            <h2>Things people ask first.</h2>
+          </div>
+
+          <div className="kp-faq-list">
+            <details>
+              <summary>Is my full bank account number shown anywhere?</summary>
+              <p>
+                No. Once you save an account, the app shows only the last four
+                digits.
+              </p>
+            </details>
+
+            <details>
+              <summary>Do I need my PIN to add money?</summary>
+              <p>
+                No. Only sending and withdrawing need it, because those are the
+                two ways money can leave your wallet.
+              </p>
+            </details>
+
+            <details>
+              <summary>How long does a withdrawal take?</summary>
+              <p>
+                It is accepted straight away and then paid in the background.
+                You will see Processing until the bank confirms, and a failed
+                payout is returned to your wallet.
+              </p>
+            </details>
+
+            <details>
+              <summary>If a withdrawal fails, do I get my daily limit back?</summary>
+              <p>
+                Your money returns to the wallet, but the day's limit is not
+                given back. That keeps the daily cap honest.
+              </p>
+            </details>
+
+            <details>
+              <summary>Can I change my PIN?</summary>
+              <p>
+                Yes. Open Security &amp; PIN, enter your account password and
+                choose a new 4 or 6 digit PIN.
+              </p>
+            </details>
+          </div>
+        </section>
+
+        {/* ---------- FINAL CALL TO ACTION ---------- */}
+        <section className="kp-final">
+          <div className="kp-final-card">
+            <h2>Your coins are waiting.</h2>
+            <p>
+              Create an account, set your PIN and make your first top-up in a
+              few minutes.
+            </p>
+            <div className="landing-hero-actions kp-final-actions">
+              <button className="landing-cta" onClick={onCreateAccount}>
+                Create my account →
+              </button>
+              <button className="kp-final-ghost" onClick={onSignIn}>
+                Sign in
+              </button>
+            </div>
+          </div>
+        </section>
+
+        
       </main>
 
       <footer className="landing-footer">
@@ -1976,16 +2127,13 @@ function AuthScreen({ mode, setMode, onSubmit, error, loading }) {
 }
 
 
-
-
-
-
 function TransferForm({
   token,
   onSuccess,
   balance,
   showBalance,
   setShowBalance,
+  contacts = [],
 }) {
   const [to, setTo] = useState("");
   const [amount, setAmount] = useState("");
@@ -2228,6 +2376,7 @@ function TransferForm({
             openPinModal();
           }}
         >
+          <RecentContacts contacts={contacts} onPick={setTo} disabled={loading} />
           <div className="transfer-field">
             <label htmlFor="transfer-recipient">Recipient</label>
 
@@ -2442,9 +2591,717 @@ function TransferForm({
 
 
 
+/* ==========================================================================
+   Transaction history: card layout, grouped by day, with search + filters.
+   Paste this block in place of your existing `function TransactionTable`.
+   It uses only things App.jsx already has: Fragment, useState and <Icon />.
+   ========================================================================== */
 
+const TX_TYPE_CHIPS = [
+  { key: "ALL", label: "All" },
+  { key: "SENT", label: "Sent" },
+  { key: "RECEIVED", label: "Received" },
+  { key: "TOPUP", label: "Added" },
+  { key: "WITHDRAWAL", label: "Withdrawals" },
+];
 
-function TransactionTable({ items = [] }) {
+const TX_STATUS_OPTIONS = [
+  { key: "ALL", label: "Any status" },
+  { key: "success", label: "Success" },
+  { key: "pending", label: "Pending" },
+  { key: "failed", label: "Failed" },
+];
+
+const TX_RANGE_OPTIONS = [
+  { key: "ALL", label: "All time" },
+  { key: "TODAY", label: "Today" },
+  { key: "7D", label: "7 days" },
+  { key: "30D", label: "30 days" },
+  { key: "CUSTOM", label: "Custom" },
+];
+
+const TX_SORT_OPTIONS = [
+  { key: "NEWEST", label: "Newest first" },
+  { key: "OLDEST", label: "Oldest first" },
+  { key: "HIGHEST", label: "Highest amount" },
+  { key: "LOWEST", label: "Lowest amount" },
+];
+
+function txStartOfDay(value) {
+  const date = new Date(value);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function txFormatAmount(amount) {
+  return `₹${(Number(amount || 0) / 100).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function txFormatDate(date) {
+  if (!date) return "—";
+
+  return date.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function txFormatTime(date) {
+  if (!date) return "";
+
+  return date.toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function txDayLabel(date) {
+  const days = Math.round(
+    (txStartOfDay(new Date()) - txStartOfDay(date)) / 86400000
+  );
+
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+
+  return date.toLocaleDateString("en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function txPerson(person) {
+  if (!person) return "External payment / wallet";
+
+  const name = `${person.firstName || ""} ${person.lastName || ""}`.trim();
+
+  return name
+    ? `${name} (@${person.username || "user"})`
+    : `@${person.username || "user"}`;
+}
+
+function txDirection(item) {
+  if (item.type === "TOPUP" || item.type === "DEPOSIT") return "CREDIT";
+  if (item.type === "REVERSAL") return "CREDIT";
+  if (item.type === "WITHDRAWAL") return "DEBIT";
+
+  if (item.type === "TRANSFER") {
+    return item.withWhom?.startsWith("Transfer from") ? "CREDIT" : "DEBIT";
+  }
+
+  return item.fromUserId ? "DEBIT" : "CREDIT";
+}
+
+function txTitle(item) {
+  switch (item.type) {
+    case "TOPUP":
+      return "Wallet top-up";
+    case "DEPOSIT":
+      return "Wallet deposit";
+    case "TRANSFER":
+      return item.withWhom || "Wallet transfer";
+    case "WITHDRAWAL":
+      return "Bank withdrawal";
+    case "REVERSAL":
+      return "Transaction reversal";
+    default:
+      return item.type || "Transaction";
+  }
+}
+
+function txIconName(item, direction) {
+  if (item.type === "TOPUP" || item.type === "DEPOSIT") return "plus";
+  if (item.type === "WITHDRAWAL") return "bank";
+  if (item.type === "REVERSAL") return "refresh";
+  return direction === "CREDIT" ? "withdraw" : "transfer";
+}
+
+function txStatusKey(status) {
+  switch (String(status || "").toUpperCase()) {
+    case "SUCCESS":
+    case "PAID":
+    case "COMPLETED":
+      return "success";
+    case "PENDING":
+    case "PROCESSING":
+    case "NEEDS_REVIEW":
+      return "pending";
+    case "FAILED":
+    case "REJECTED":
+    case "CANCELLED":
+      return "failed";
+    default:
+      return "unknown";
+  }
+}
+
+function txSender(item) {
+  if (item.type === "TOPUP" || item.type === "DEPOSIT") return "Payment gateway";
+  if (item.type === "REVERSAL") return "Wallet reversal";
+  return item.fromUserId ? txPerson(item.fromUserId) : "External source";
+}
+
+function txRecipient(item) {
+  if (item.type === "WITHDRAWAL") return "Bank account";
+  return item.toUserId ? txPerson(item.toUserId) : "External destination";
+}
+
+function txMatchesType(entry, key) {
+  const { item, direction } = entry;
+
+  if (key === "ALL") return true;
+  if (key === "SENT") return item.type === "TRANSFER" && direction === "DEBIT";
+  if (key === "RECEIVED") return item.type === "TRANSFER" && direction === "CREDIT";
+  if (key === "TOPUP") return ["TOPUP", "DEPOSIT"].includes(item.type);
+  if (key === "WITHDRAWAL") return item.type === "WITHDRAWAL";
+
+  return true;
+}
+
+function txMatchesRange(entry, range, fromDate, toDate) {
+  if (range === "ALL") return true;
+  if (!entry.date) return false;
+
+  const time = entry.date.getTime();
+  const today = txStartOfDay(new Date());
+
+  if (range === "TODAY") return time >= today.getTime();
+
+  if (range === "7D" || range === "30D") {
+    const start = new Date(today);
+    start.setDate(start.getDate() - (range === "7D" ? 6 : 29));
+    return time >= start.getTime();
+  }
+
+  if (range === "CUSTOM") {
+    if (fromDate && time < new Date(`${fromDate}T00:00:00`).getTime()) return false;
+    if (toDate && time > new Date(`${toDate}T23:59:59.999`).getTime()) return false;
+  }
+
+  return true;
+}
+
+function TransactionTable({ items = [], compact = false }) {
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [range, setRange] = useState("ALL");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [sortBy, setSortBy] = useState("NEWEST");
+  const [selectedId, setSelectedId] = useState(null);
+  const [copiedId, setCopiedId] = useState(null);
+  const [receiptEntry, setReceiptEntry] = useState(null);
+
+  // Prepare every transaction once, including one searchable text string.
+  const entries = items.map((item) => {
+    const direction = txDirection(item);
+    const rawDate = item.createdAt ? new Date(item.createdAt) : null;
+    const date = rawDate && !Number.isNaN(rawDate.getTime()) ? rawDate : null;
+    const sender = txSender(item);
+    const recipient = txRecipient(item);
+    const rupees = Number(item.amount || 0) / 100;
+
+    const text = [
+      item._id,
+      item.type,
+      item.status,
+      item.note,
+      item.withWhom,
+      txTitle(item),
+      sender,
+      recipient,
+      String(rupees),
+      rupees.toFixed(2),
+      txFormatAmount(item.amount),
+      txFormatDate(date),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return {
+      item,
+      direction,
+      date,
+      sender,
+      recipient,
+      statusKey: txStatusKey(item.status),
+      text,
+    };
+  });
+
+  const words = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
+
+  const filtered = entries.filter((entry) => {
+    if (words.length && !words.every((word) => entry.text.includes(word))) return false;
+    if (!txMatchesType(entry, typeFilter)) return false;
+    if (statusFilter !== "ALL" && entry.statusKey !== statusFilter) return false;
+    if (!txMatchesRange(entry, range, fromDate, toDate)) return false;
+    return true;
+  });
+
+  const sorted = [...filtered].sort((a, b) => {
+    const timeA = a.date ? a.date.getTime() : 0;
+    const timeB = b.date ? b.date.getTime() : 0;
+
+    if (sortBy === "OLDEST") return timeA - timeB;
+    if (sortBy === "HIGHEST") return Number(b.item.amount || 0) - Number(a.item.amount || 0);
+    if (sortBy === "LOWEST") return Number(a.item.amount || 0) - Number(b.item.amount || 0);
+    return timeB - timeA;
+  });
+
+  // Group by day when sorted by date; one flat list when sorted by amount.
+  const groups = [];
+
+  if (sortBy === "NEWEST" || sortBy === "OLDEST") {
+    sorted.forEach((entry) => {
+      const key = entry.date
+        ? `${entry.date.getFullYear()}-${entry.date.getMonth()}-${entry.date.getDate()}`
+        : "unknown";
+      const last = groups[groups.length - 1];
+
+      if (last && last.key === key) {
+        last.entries.push(entry);
+      } else {
+        groups.push({
+          key,
+          label: entry.date ? txDayLabel(entry.date) : "Unknown date",
+          entries: [entry],
+        });
+      }
+    });
+  } else if (sorted.length > 0) {
+    groups.push({
+      key: "amount",
+      label: sortBy === "HIGHEST" ? "Highest amount first" : "Lowest amount first",
+      entries: sorted,
+    });
+  }
+
+  const activeFilters =
+    (words.length ? 1 : 0) +
+    (typeFilter !== "ALL" ? 1 : 0) +
+    (statusFilter !== "ALL" ? 1 : 0) +
+    (range !== "ALL" ? 1 : 0);
+
+  function clearAll() {
+    setSearch("");
+    setTypeFilter("ALL");
+    setStatusFilter("ALL");
+    setRange("ALL");
+    setFromDate("");
+    setToDate("");
+    setSortBy("NEWEST");
+  }
+
+  function chooseRange(key) {
+    setRange(key);
+
+    if (key !== "CUSTOM") {
+      setFromDate("");
+      setToDate("");
+    }
+  }
+
+  function copyId(id) {
+    if (!id) return;
+
+    try {
+      navigator.clipboard?.writeText(String(id));
+    } catch (error) {
+      // Clipboard may be unavailable; the ID is still visible to copy by hand.
+    }
+
+    setCopiedId(id);
+    setTimeout(() => setCopiedId((current) => (current === id ? null : current)), 1500);
+  }
+
+  return (
+    <div className="th-wrap">
+      {!compact && (
+        <div className="th-filters">
+          <div className="th-search">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+
+            <input
+              type="search"
+              aria-label="Search transactions"
+              placeholder="Search by name, note, amount, date or ID…"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+
+            {search && (
+              <button
+                type="button"
+                className="th-search-clear"
+                aria-label="Clear search"
+                onClick={() => setSearch("")}
+              >
+                <Icon name="close" />
+              </button>
+            )}
+          </div>
+
+          <div className="th-chip-row" role="group" aria-label="Transaction type">
+            {TX_TYPE_CHIPS.map((chip) => {
+              const count = entries.filter((entry) => txMatchesType(entry, chip.key)).length;
+
+              return (
+                <button
+                  key={chip.key}
+                  type="button"
+                  className={typeFilter === chip.key ? "th-chip active" : "th-chip"}
+                  aria-pressed={typeFilter === chip.key}
+                  onClick={() => setTypeFilter(chip.key)}
+                >
+                  {chip.label}
+                  <em>{count}</em>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="th-filter-line">
+            <div className="th-group">
+              <span className="th-group-label">Status</span>
+              <div className="th-seg" role="group" aria-label="Status">
+                {TX_STATUS_OPTIONS.map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    className={statusFilter === option.key ? "active" : ""}
+                    aria-pressed={statusFilter === option.key}
+                    onClick={() => setStatusFilter(option.key)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="th-group">
+              <span className="th-group-label">Date</span>
+              <div className="th-seg" role="group" aria-label="Date range">
+                {TX_RANGE_OPTIONS.map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    className={range === option.key ? "active" : ""}
+                    aria-pressed={range === option.key}
+                    onClick={() => chooseRange(option.key)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="th-group">
+              <span className="th-group-label">Sort</span>
+              <select
+                className="th-select"
+                aria-label="Sort transactions"
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value)}
+              >
+                {TX_SORT_OPTIONS.map((option) => (
+                  <option key={option.key} value={option.key}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {range === "CUSTOM" && (
+            <div className="th-dates">
+              <label>
+                From
+                <input
+                  type="date"
+                  value={fromDate}
+                  max={toDate || undefined}
+                  onChange={(event) => setFromDate(event.target.value)}
+                />
+              </label>
+
+              <label>
+                To
+                <input
+                  type="date"
+                  value={toDate}
+                  min={fromDate || undefined}
+                  onChange={(event) => setToDate(event.target.value)}
+                />
+              </label>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!compact && (
+        <div className="th-results">
+          <span>
+            Showing <strong>{filtered.length}</strong> of {items.length} loaded transactions
+          </span>
+
+          {(activeFilters > 0 || sortBy !== "NEWEST") && (
+            <button type="button" className="th-clear" onClick={clearAll}>
+              Clear {activeFilters > 0 ? `${activeFilters} filter${activeFilters > 1 ? "s" : ""}` : "sorting"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {groups.map((group) => (
+        <Fragment key={group.key}>
+          <section className="th-day">
+            <h3 className="th-day-head">
+              {group.label}
+              <span>{group.entries.length}</span>
+            </h3>
+
+            <div className="th-day-list">
+              {group.entries.map((entry) => {
+                const { item, direction, date, sender, recipient, statusKey } = entry;
+                const isCredit = direction === "CREDIT";
+                const isOpen = selectedId === item._id;
+                const statusText = String(item.status || "Unknown").toLowerCase();
+
+                return (
+                  <article key={item._id} className={isOpen ? "th-item open" : "th-item"}>
+                    <button
+                      type="button"
+                      className="th-item-main"
+                      aria-expanded={isOpen}
+                      onClick={() => setSelectedId(isOpen ? null : item._id)}
+                    >
+                      <span className={isCredit ? "th-icon in" : "th-icon out"}>
+                        <Icon name={txIconName(item, direction)} />
+                      </span>
+
+                      <span className="th-info">
+                        <strong>{txTitle(item)}</strong>
+                        <small>
+                          {isCredit ? `From ${sender}` : `To ${recipient}`}
+                          {date ? ` · ${txFormatTime(date)}` : ""}
+                        </small>
+                      </span>
+
+                      <span className="th-right">
+                        <b className={isCredit ? "in" : ""}>
+                          {isCredit ? "+" : "−"}
+                          {txFormatAmount(item.amount)}
+                        </b>
+                        <span className={`th-status th-status-${statusKey}`}>
+                          <i />
+                          {statusText}
+                        </span>
+                      </span>
+
+                      <span className="th-chevron">
+                        <Icon name={isOpen ? "chevron-up" : "chevron-down"} />
+                      </span>
+                    </button>
+
+                    {isOpen && (
+                      <div className="th-detail">
+                        <div className="th-field th-field-wide">
+                          <span>Transaction ID</span>
+                          <p>
+                            <code>{item._id || "—"}</code>
+                            {item._id && (
+                              <button
+                                type="button"
+                                className="th-copy"
+                                onClick={() => copyId(item._id)}
+                              >
+                                {copiedId === item._id ? "Copied" : "Copy"}
+                              </button>
+                            )}
+                          </p>
+                        </div>
+
+                        <div className="th-field">
+                          <span>Type</span>
+                          <p>{item.type || "—"}</p>
+                        </div>
+                        <div className="th-field">
+                          <span>Date</span>
+                          <p>{txFormatDate(date)}</p>
+                        </div>
+                        <div className="th-field">
+                          <span>Sender</span>
+                          <p>{sender}</p>
+                        </div>
+                        <div className="th-field">
+                          <span>Recipient</span>
+                          <p>{recipient}</p>
+                        </div>
+                        <div className="th-field">
+                          <span>Amount</span>
+                          <p>{txFormatAmount(item.amount)}</p>
+                        </div>
+                        <div className="th-field">
+                          <span>Status</span>
+                          <p>{item.status || "Unknown"}</p>
+                        </div>
+                        <div className="th-field th-field-wide">
+                          <span>Note</span>
+                          <p>{item.note || "No note provided"}</p>
+                        </div>
+                        <div className="th-field th-field-wide">
+                          <button type="button" className="th-receipt-btn" onClick={() => setReceiptEntry(entry)}>
+                            View receipt
+                          </button>
+                        </div>
+                        
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        </Fragment>
+      ))}
+
+      {groups.length === 0 && (
+        <div className="th-empty">
+          <span className="th-empty-icon">
+            <Icon name="receipt" />
+          </span>
+
+          {items.length === 0 ? (
+            <>
+              <h4>No transactions yet</h4>
+              <p>When you add money, send money or withdraw, it will appear here.</p>
+            </>
+          ) : (
+            <>
+              <h4>Nothing matches your search</h4>
+              <p>Try a different word, or clear the filters to see everything.</p>
+              <button type="button" className="light-button" onClick={clearAll}>
+                Clear filters
+              </button>
+            </>
+          )}
+        </div>
+      )}
+      {receiptEntry && (
+  <TxReceiptModal entry={receiptEntry} onClose={() => setReceiptEntry(null)} />
+)}
+    </div>
+  );
+}
+
+/* ---------- Receipt popup (paste ABOVE `function TransactionTable`) ---------- */
+function TxReceiptModal({ entry, onClose }) {
+  const { item, direction, date, sender, recipient } = entry;
+  const isCredit = direction === "CREDIT";
+  const [shared, setShared] = useState("");
+
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const rows = [
+    ["Type", item.type || "—"],
+    ["Date", txFormatDate(date)],
+    ["From", sender],
+    ["To", recipient],
+    ["Status", item.status || "Unknown"],
+    ["Note", item.note || "—"],
+    ["Transaction ID", item._id || "—"],
+  ];
+
+  const summary = [
+    "KaasuPay receipt",
+    `${txTitle(item)}: ${txFormatAmount(item.amount)}`,
+    ...rows.map(([label, value]) => `${label}: ${value}`),
+  ].join("\n");
+
+  async function share() {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "KaasuPay receipt", text: summary });
+        return;
+      }
+      await navigator.clipboard.writeText(summary);
+      setShared("Receipt copied");
+    } catch (error) {
+      setShared("Could not share");
+    }
+    setTimeout(() => setShared(""), 1800);
+  }
+
+  return (
+    <div
+      className="tx-modal-backdrop"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="tx-receipt" role="dialog" aria-modal="true" aria-label="Transaction receipt">
+        <button type="button" className="tx-receipt-close no-print" onClick={onClose} aria-label="Close">
+          ✕
+        </button>
+
+        <div className="tx-receipt-head">
+          <span className="tx-receipt-brand">KaasuPay</span>
+          <small>Payment receipt</small>
+          <h3 className={isCredit ? "in" : ""}>
+            {isCredit ? "+" : "−"}
+            {txFormatAmount(item.amount)}
+          </h3>
+          <p>{txTitle(item)}</p>
+        </div>
+
+        <dl className="tx-receipt-rows">
+          {rows.map(([label, value]) => (
+            <div key={label}>
+              <dt>{label}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
+        </dl>
+
+        <div className="tx-receipt-actions no-print">
+          <button type="button" className="light-button" onClick={share}>
+            {shared || "Share"}
+          </button>
+          <button type="button" className="primary-button" onClick={() => window.print()}>
+            Download / Print
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/*function TransactionTable({ items = [] }) {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -2810,7 +3667,7 @@ function TransactionTable({ items = [] }) {
       </div>
     </div>
   );
-}
+} */
 
 
 function BankAccountsPage({ token }) {
