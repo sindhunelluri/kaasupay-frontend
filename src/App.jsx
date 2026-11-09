@@ -88,6 +88,7 @@ useEffect(() => {
   const [showLimit, setShowLimit] = useState(false);
   const [loggingOutAll, setLoggingOutAll] = useState(false);
   const [transactions, setTransactions] = useState([]);
+  const [contactTransactions, setContactTransactions] = useState([]);
   const [transactionPagination, setTransactionPagination] = useState({
   page: 1,
   limit: 10,
@@ -95,6 +96,10 @@ useEffect(() => {
   totalPages: 0,
 });
 const [transactionLoading, setTransactionLoading] = useState(false);
+const [historyItems, setHistoryItems] = useState([]);
+const [nextHistoryCursor, setNextHistoryCursor] = useState(null);
+const [historyLoading, setHistoryLoading] = useState(false);
+const [historyError, setHistoryError] = useState("");
 const [accountLoading, setAccountLoading] = useState(false);
 
   const menuItems = [
@@ -248,13 +253,12 @@ const [accountLoading, setAccountLoading] = useState(false);
           Authorization: `Bearer ${token}`,
         };
 
-        const [userResponse, balanceResponse, transactionResponse] =
+        const [userResponse, balanceResponse, transactionResponse, contactResponse] =
   await Promise.all([
     fetch(apiUrl("/api/v1/user/me"), { headers }),
     fetch(apiUrl("/api/v1/wallet/balance"), { headers }),
-    fetch(apiUrl("/api/v1/wallet/transactions?page=1&limit=10"), {
-      headers,
-    }),
+    fetch(apiUrl("/api/v1/wallet/history?limit=20"), { headers }),
+    fetch(apiUrl("/api/v1/wallet/transactions?page=1&limit=50"), { headers }),
   ]);
 
         if (
@@ -285,8 +289,12 @@ const [accountLoading, setAccountLoading] = useState(false);
           );
         }
 
-        let transactionData = { transactions: [] };
+        let transactionData = { items: [], nextCursor: null };
+        let contactData = { transactions: [] };
 
+if (contactResponse.ok) {
+  contactData = await contactResponse.json();
+}
         if (transactionResponse.ok) {
           transactionData = await transactionResponse.json();
         }
@@ -294,15 +302,10 @@ const [accountLoading, setAccountLoading] = useState(false);
         if (!cancelled) {
           setUser(userData.user);
           setWalletBalance(Number(balanceData.balanceInRupees));
-          setTransactions(transactionData.transactions || []);
-          setTransactionPagination(
-            transactionData.pagination || {
-              page: 1,
-              limit: 10,
-              total: (transactionData.transactions || []).length,
-              totalPages: 1,
-          }
-          );
+          setTransactions(transactionData.items || []);
+          setContactTransactions(contactData.transactions || []);
+          setNextHistoryCursor(transactionData.nextCursor || null);
+          setHistoryError("");
         }
       } catch (error) {
         if (!cancelled) {
@@ -325,15 +328,16 @@ const [accountLoading, setAccountLoading] = useState(false);
   }, [token]);
 
   
-async function loadTransactions(page) {
-  if (!token || transactionLoading) return;
+async function loadMoreHistory() {
+  if (!token || !nextHistoryCursor || historyLoading) return;
 
-  setTransactionLoading(true);
+  setHistoryLoading(true);
+  setHistoryError("");
 
   try {
     const response = await fetch(
       apiUrl(
-        `/api/v1/wallet/transactions?page=${page}&limit=${transactionPagination.limit}`
+        `/api/v1/wallet/history?limit=20&cursor=${encodeURIComponent(nextHistoryCursor)}`
       ),
       {
         headers: {
@@ -351,24 +355,28 @@ async function loadTransactions(page) {
     }
 
     if (!response.ok) {
-      throw new Error(
-        data.error || "Could not load transaction history."
-      );
+      throw new Error(data.error || "Could not load more transactions.");
     }
 
-    setTransactions(data.transactions || []);
-    setTransactionPagination(
-      data.pagination || {
-        page,
-        limit: 10,
-        total: (data.transactions || []).length,
-        totalPages: 1,
-      }
-    );
+    setTransactions((current) => {
+      const existingIds = new Set(
+        current.map((item) => String(item._id))
+      );
+
+      const newItems = (data.items || []).filter(
+        (item) => !existingIds.has(String(item._id))
+      );
+
+      return [...current, ...newItems];
+    });
+
+    setNextHistoryCursor(data.nextCursor || null);
   } catch (error) {
-    setAuthError(error.message || "Unable to load transactions.");
+    setHistoryError(
+      error.message || "Unable to load more transactions."
+    );
   } finally {
-    setTransactionLoading(false);
+    setHistoryLoading(false);
   }
 }
 
@@ -382,16 +390,17 @@ async function refreshWalletData() {
   };
 
   try {
-    const [balanceResponse, transactionResponse] = await Promise.all([
-      fetch(apiUrl("/api/v1/wallet/balance"), { headers }),
-      fetch(apiUrl("/api/v1/wallet/transactions?page=1&limit=10"), {
-        headers,
-      }),
-    ]);
+    const [balanceResponse, transactionResponse, contactResponse] =
+  await Promise.all([
+    fetch(apiUrl("/api/v1/wallet/balance"), { headers }),
+    fetch(apiUrl("/api/v1/wallet/history?limit=20"), { headers }),
+    fetch(apiUrl("/api/v1/wallet/transactions?page=1&limit=50"), { headers }),
+  ]);
 
     if (
       balanceResponse.status === 401 ||
-      transactionResponse.status === 401
+      transactionResponse.status === 401 ||
+      contactResponse.status === 401
     ) {
       logout();
       setAuthError("Your session expired. Please sign in again.");
@@ -400,7 +409,9 @@ async function refreshWalletData() {
 
     const balanceData = await balanceResponse.json();
     const transactionData = await transactionResponse.json();
-
+    const contactData = contactResponse.ok
+  ? await contactResponse.json()
+  : { transactions: [] };
     if (!balanceResponse.ok) {
       throw new Error(
         balanceData.error || "Could not refresh wallet balance."
@@ -414,15 +425,10 @@ async function refreshWalletData() {
     }
 
     setWalletBalance(Number(balanceData.balanceInRupees));
-    setTransactions(transactionData.transactions || []);
-    setTransactionPagination(
-      transactionData.pagination || {
-        page: 1,
-        limit: 10,
-        total: (transactionData.transactions || []).length,
-        totalPages: 1,
-      }
-    );
+    setTransactions(transactionData.items || []);
+    setContactTransactions(contactData.transactions || []);
+    setNextHistoryCursor(transactionData.nextCursor || null);
+    setHistoryError("");
   } catch (error) {
     setAuthError(
       error.message || "Unable to refresh wallet information."
@@ -488,7 +494,7 @@ if (!token) {
   const totalTopups = transactions
     .filter((item) => item.type === "TOPUP")
     .reduce((sum, item) => sum + Number(item.amount || 0), 0) / 100;
-  const recentContacts = getRecentContacts(transactions, txDirection);
+  const recentContacts = getRecentContacts(contactTransactions, txDirection);
 
   return (
     <div className="app-layout">
@@ -929,11 +935,19 @@ if (!token) {
         {activePage === "Transactions" && (
           <section className="content-card transactions-page">
             <div className="section-heading">
-              <div>
-                <h2>Transaction history</h2>
-                <p>Your latest wallet activity.</p>
-              </div>
-            </div>
+  <div>
+    <h2>Transaction history</h2>
+    <p>Your latest wallet activity.</p>
+  </div>
+
+    <button
+    type="button"
+    className="light-button export-csv-btn"
+    onClick={() => downloadTransactionCSV(transactions)}
+  >
+    <Icon name="download" /> Export CSV
+  </button>
+</div>
             <TransactionTable items={transactions} />
 
 {transactionLoading && (
@@ -946,46 +960,31 @@ if (!token) {
   </p>
 )}
 
+{historyError && <p>{historyError}</p>}
+
+{historyLoading && <p>Loading more transactions...</p>}
+
+{!historyLoading && transactions.length === 0 && (
+  <p>No transactions found.</p>
+)}
+
 <div className="transaction-pagination">
   <span>
-    {transactionPagination.total === 0
-      ? "No transactions"
-      : `Page ${transactionPagination.page} of ${Math.max(
-          1,
-          transactionPagination.totalPages
-        )} · ${transactionPagination.total} total transactions`}
+    {transactions.length > 0
+      ? `Showing ${transactions.length} transactions`
+      : "No transactions"}
   </span>
 
-  <div className="transaction-pagination-actions">
+  {nextHistoryCursor && (
     <button
       type="button"
       className="light-button"
-      disabled={
-        transactionLoading ||
-        transactionPagination.page <= 1
-      }
-      onClick={() =>
-        loadTransactions(transactionPagination.page - 1)
-      }
+      onClick={loadMoreHistory}
+      disabled={historyLoading}
     >
-      ← Previous
+      {historyLoading ? "Loading..." : "Load More"}
     </button>
-
-    <button
-      type="button"
-      className="light-button"
-      disabled={
-        transactionLoading ||
-        transactionPagination.page >=
-          transactionPagination.totalPages
-      }
-      onClick={() =>
-        loadTransactions(transactionPagination.page + 1)
-      }
-    >
-      Next →
-    </button>
-  </div>
+  )}
 </div>
           </section>
         )}
@@ -2589,7 +2588,53 @@ function TransferForm({
   );
 }
 
+function downloadTransactionCSV(items = []) {
+  if (!items.length) {
+    alert("No transactions available to export.");
+    return;
+  }
 
+  const headers = [
+    "Date",
+    "Type",
+    "Amount",
+    "Status",
+    "From",
+    "To",
+    "Note",
+  ];
+
+  const escapeCSV = (value) =>
+    `"${String(value ?? "").replace(/"/g, '""')}"`;
+
+  const rows = items.map((item) => [
+    item.createdAt ? new Date(item.createdAt).toLocaleString("en-IN") : "",
+    item.type || "",
+    item.amount ?? "",
+    item.status || "SUCCESS",
+    item.fromUserId?.username || "",
+    item.toUserId?.username || "",
+    item.note || "",
+  ]);
+
+  const csv = [
+    headers.map(escapeCSV).join(","),
+    ...rows.map((row) => row.map(escapeCSV).join(",")),
+  ].join("\r\n");
+
+  const blob = new Blob(["\uFEFF" + csv], {
+    type: "text/csv;charset=utf-8;",
+  });
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = "KaasuPay-Transaction-Statement.csv";
+  link.click();
+
+  URL.revokeObjectURL(url);
+}
 
 /* ==========================================================================
    Transaction history: card layout, grouped by day, with search + filters.
@@ -2738,7 +2783,7 @@ function txStatusKey(status) {
     case "CANCELLED":
       return "failed";
     default:
-      return "unknown";
+      return "Success";
   }
 }
 
@@ -2833,7 +2878,7 @@ function TransactionTable({ items = [], compact = false }) {
       date,
       sender,
       recipient,
-      statusKey: txStatusKey(item.status),
+      statusKey: txStatusKey(item.status || "SUCCESS"),
       text,
     };
   });
@@ -2843,7 +2888,10 @@ function TransactionTable({ items = [], compact = false }) {
   const filtered = entries.filter((entry) => {
     if (words.length && !words.every((word) => entry.text.includes(word))) return false;
     if (!txMatchesType(entry, typeFilter)) return false;
-    if (statusFilter !== "ALL" && entry.statusKey !== statusFilter) return false;
+    if (
+  statusFilter !== "ALL" &&
+  entry.statusKey !== String(statusFilter).toLowerCase()
+) return false;
     if (!txMatchesRange(entry, range, fromDate, toDate)) return false;
     return true;
   });
@@ -3088,7 +3136,7 @@ function TransactionTable({ items = [], compact = false }) {
                 const { item, direction, date, sender, recipient, statusKey } = entry;
                 const isCredit = direction === "CREDIT";
                 const isOpen = selectedId === item._id;
-                const statusText = String(item.status || "Unknown").toLowerCase();
+                const statusText = String(item.status || "Success").toLowerCase();
 
                 return (
                   <article key={item._id} className={isOpen ? "th-item open" : "th-item"}>
@@ -3166,7 +3214,7 @@ function TransactionTable({ items = [], compact = false }) {
                         </div>
                         <div className="th-field">
                           <span>Status</span>
-                          <p>{item.status || "Unknown"}</p>
+                          <p>{item.status || "Success"}</p>
                         </div>
                         <div className="th-field th-field-wide">
                           <span>Note</span>
@@ -4746,6 +4794,7 @@ const ICON_PATHS = {
   receipt: (<><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z" /><path d="M9 8h6" /><path d="M9 12h6" /></>),
   card: (<><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18" /><path d="M7 15h4" /></>),
   refresh: (<><path d="M20 11a8 8 0 0 0-14.5-4" /><path d="M5 3v4h4" /><path d="M4 13a8 8 0 0 0 14.5 4" /><path d="M19 21v-4h-4" /></>),
+    download: (<><path d="M12 4v11" /><path d="m7 11 5 5 5-5" /><path d="M5 20h14" /></>),
 };
 
 function Icon({ name, size = "1em", className = "" }) {

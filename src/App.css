@@ -5218,3 +5218,51 @@ button[style*="rgb(255, 247, 237)"] {
   :root[data-theme="dark"] .tx-receipt { background: #fff; color: #292521; }
   :root[data-theme="dark"] .tx-receipt * { color: inherit; }
 }
+
+/* ==========================================================================
+   Transaction history: Export CSV button
+   ========================================================================== */
+.transactions-page > .section-heading:first-child::after {
+  order: 1;
+}
+
+.export-csv-btn {
+  order: 2;
+  margin-left: 0;
+  min-height: 40px;
+  padding: 0 16px;
+  gap: 8px;
+  border-radius: 999px;
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.export-csv-btn .icon { color: var(--coin); }
+
+.export-csv-btn:hover:not(:disabled) {
+  background: var(--ink-3);
+  border-color: var(--ink-3);
+}
+
+:root[data-theme="dark"] .export-csv-btn {
+  background: var(--coin);
+  border-color: var(--coin);
+  color: var(--ink);
+}
+
+:root[data-theme="dark"] .export-csv-btn .icon { color: var(--ink); }
+
+:root[data-theme="dark"] .export-csv-btn:hover:not(:disabled) {
+  background: #d69c6e;
+  border-color: #d69c6e;
+}
+
+@media (max-width: 640px) {
+  .export-csv-btn {
+    order: 3;
+    width: 100%;
+  }
+}
