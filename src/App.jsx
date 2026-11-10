@@ -56,6 +56,7 @@ useEffect(() => {
   const [token, setToken] = useState(
     () => sessionStorage.getItem("kaasupay_token") || ""
   );
+  const [showSessionWarning, setShowSessionWarning] = useState(false);
   
 const [theme, setTheme] = useState(() => {
   const saved = localStorage.getItem("kaasupay-theme");
@@ -217,10 +218,104 @@ const [accountLoading, setAccountLoading] = useState(false);
   }
 
   // Load the limit after sign in, and whenever wallet data is refreshed.
-  useEffect(() => {
-    if (token) loadLimits();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  
+useEffect(() => {
+  if (!token) {
+    setShowSessionWarning(false);
+    return;
+  }
+
+  let warningTimer;
+  let logoutTimer;
+  let lastHeartbeatAt = 0;
+  let heartbeatInProgress = false;
+
+  async function sendActivityHeartbeat() {
+    const now = Date.now();
+
+    // Send at most one heartbeat every 5 minutes.
+    if (
+      now - lastHeartbeatAt < 5 * 60 * 1000 ||
+      heartbeatInProgress
+    ) {
+      return;
+    }
+
+    heartbeatInProgress = true;
+
+    try {
+      const response = await fetch(apiUrl("/api/v1/user/activity"), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 401) {
+        logout();
+        setAuthError(
+          "Your session expired. Please sign in again."
+        );
+        return;
+      }
+
+      if (response.ok) {
+        lastHeartbeatAt = Date.now();
+      }
+    } catch (error) {
+      console.error("Activity heartbeat failed:", error);
+    } finally {
+      heartbeatInProgress = false;
+    }
+  }
+
+  function resetInactivityTimer() {
+    clearTimeout(warningTimer);
+    clearTimeout(logoutTimer);
+
+    setShowSessionWarning(false);
+
+    warningTimer = setTimeout(() => {
+      setShowSessionWarning(true);
+    }, 55* 60 * 1000);
+
+    logoutTimer = setTimeout(() => {
+      setShowSessionWarning(false);
+      logout();
+      setAuthError(
+        "You were signed out due to inactivity. Please sign in again."
+      );
+    }, 60*60 * 1000);
+
+    sendActivityHeartbeat();
+  }
+
+  const events = [
+    "mousemove",
+    "mousedown",
+    "keydown",
+    "touchstart",
+    "scroll",
+    "click",
+    "wheel",
+  ];
+
+  events.forEach((event) => {
+    window.addEventListener(event, resetInactivityTimer);
+  });
+
+  resetInactivityTimer();
+
+  return () => {
+    clearTimeout(warningTimer);
+    clearTimeout(logoutTimer);
+
+    events.forEach((event) => {
+      window.removeEventListener(event, resetInactivityTimer);
+    });
+  };
+}, [token]);
+
 
   // After a password change the server sends a fresh token for THIS device.
   function updateToken(newToken) {
@@ -239,6 +334,7 @@ const [accountLoading, setAccountLoading] = useState(false);
     setAuthError("");
   }
 
+
   useEffect(() => {
     if (!token) return;
 
@@ -247,7 +343,8 @@ const [accountLoading, setAccountLoading] = useState(false);
     async function loadAccount() {
       setAccountLoading(true);
       setAuthError("");
-
+      loadLimits();
+      
       try {
         const headers = {
           Authorization: `Bearer ${token}`,
@@ -498,6 +595,17 @@ if (!token) {
 
   return (
     <div className="app-layout">
+      {showSessionWarning && (
+  <div className="session-warning" role="alert">
+    <span>Your session will expire in 5 minutes due to inactivity.</span>
+    <button
+      type="button"
+      onClick={() => setShowSessionWarning(false)}
+    >
+      Dismiss
+    </button>
+  </div>
+)}
       <div
         className={mobileMenuOpen ? "sidebar-backdrop show" : "sidebar-backdrop"}
         onClick={() => setMobileMenuOpen(false)}

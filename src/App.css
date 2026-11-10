@@ -5266,3 +5266,32 @@ button[style*="rgb(255, 247, 237)"] {
     width: 100%;
   }
 }
+ 
+.session-warning {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  width: min(92%, 520px);
+  padding: 14px 18px;
+  background: #fff4d6;
+  color: #704d00;
+  border: 1px solid #e8c66b;
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.session-warning button {
+  border: none;
+  background: transparent;
+  color: #704d00;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
