@@ -6214,3 +6214,338 @@ button[style*="rgb(255, 247, 237)"] {
   .autopay-actions button { flex: 1; }
   .autopay-actions .autopay-history-btn { margin-left: 0; flex-basis: 100%; }
 }
+
+/* ==========================================================================
+   NOTIFICATION CENTER
+   Hero banner, unread/read cards with a coin-gold bell badge, bell button
+   with count badge in the top bar. CSS only, works in light and dark mode.
+   ========================================================================== */
+
+/* ---------- top bar bell ---------- */
+.notification-bell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+}
+
+.notification-bell svg {
+  width: 19px;
+  height: 19px;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  border: 2px solid var(--paper);
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+:root[data-theme="dark"] .notification-badge { background: #e5574f; }
+
+/* ---------- page card + hero heading ---------- */
+.notifications-page {
+  --np-pad: 26px;
+  padding-top: 0;
+  overflow: hidden;
+}
+
+.notifications-page > .section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 0 calc(var(--np-pad) * -1) 22px;
+  padding: 24px var(--np-pad);
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(125deg, var(--coin-soft) 0%, var(--surface) 62%, var(--coin-soft) 100%);
+}
+
+/* bell tile in front of the title */
+.notifications-page > .section-heading > div {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-width: 0;
+  padding-left: 70px;
+}
+
+.notifications-page > .section-heading > div::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  background-color: var(--coin);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23292929' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9'/%3E%3Cpath d='M10 21h4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 26px;
+  box-shadow: 0 8px 18px -6px rgba(128, 84, 56, 0.45);
+  transform: translateY(-50%);
+}
+
+.notifications-page > .section-heading h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 25px;
+  line-height: 1.2;
+  letter-spacing: -0.5px;
+}
+
+.notifications-page > .section-heading h2::after {
+  content: "";
+  display: block;
+  width: 34px;
+  height: 3px;
+  margin-top: 8px;
+  border-radius: 3px;
+  background: var(--coin);
+}
+
+.notifications-page > .section-heading p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* "Mark all as read" becomes a pill */
+.notifications-page > .section-heading > .text-button {
+  min-height: 40px;
+  padding: 0 18px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--coin-deep);
+  font-size: 13.5px;
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+}
+
+.notifications-page > .section-heading > .text-button:hover {
+  border-color: var(--coin);
+  background: var(--coin-soft);
+  color: var(--coin-deep);
+}
+
+/* loading / empty message */
+.notifications-page > .form-help {
+  margin: 0;
+  padding: 44px 18px;
+  border: 1.5px dashed var(--line);
+  border-radius: var(--r-lg);
+  text-align: center;
+  font-size: 14.5px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* ---------- list ---------- */
+.notification-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 0;
+}
+
+.notification-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px 16px 16px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.notification-item:hover {
+  border-color: #d9d2c8;
+  box-shadow: var(--shadow-sm);
+}
+
+:root[data-theme="dark"] .notification-item:hover { border-color: var(--faint); }
+
+/* round bell badge on the left of every card */
+.notification-item::before {
+  content: "";
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: var(--paper);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23857a6e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9'/%3E%3Cpath d='M10 21h4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 20px;
+}
+
+/* unread: warm card, gold bar, gold bell */
+.notification-item.unread {
+  border-color: var(--coin);
+  background: linear-gradient(100deg, var(--coin-soft) 0%, var(--surface) 70%);
+  box-shadow: var(--shadow-sm);
+}
+
+.notification-item.unread::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 4px;
+  background: var(--coin);
+}
+
+.notification-item.unread::before {
+  background-color: var(--coin);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23292929' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9'/%3E%3Cpath d='M10 21h4'/%3E%3C/svg%3E");
+  box-shadow: 0 6px 14px -6px rgba(128, 84, 56, 0.6);
+}
+
+/* read: quiet */
+.notification-item.read { background: var(--surface); }
+.notification-item.read .notification-item-heading strong { color: var(--muted); font-weight: 600; }
+
+/* ---------- text ---------- */
+.notification-item-content {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.notification-item-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.notification-item-heading strong {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.notification-unread-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--coin);
+  box-shadow: 0 0 0 4px var(--coin-soft);
+}
+
+.notification-item-content p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.notification-item-content small {
+  margin-top: 2px;
+  color: var(--faint);
+  font-size: 12px;
+}
+
+/* ---------- actions ---------- */
+.notification-item-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.notification-item-actions .text-button {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--coin-deep);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.notification-item-actions .text-button:hover {
+  border-color: var(--coin);
+  background: var(--coin-soft);
+  color: var(--coin-deep);
+}
+
+/* "View" is the main action */
+.notification-item-actions .text-button:first-child:not(:last-child) {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #fff;
+}
+
+.notification-item-actions .text-button:first-child:not(:last-child):hover {
+  border-color: var(--ink-3);
+  background: var(--ink-3);
+  color: #fff;
+}
+
+:root[data-theme="dark"] .notification-item-actions .text-button:first-child:not(:last-child) {
+  border-color: var(--coin);
+  background: var(--coin);
+  color: var(--ink);
+}
+
+:root[data-theme="dark"] .notification-item-actions .text-button:first-child:not(:last-child):hover {
+  border-color: #d69c6e;
+  background: #d69c6e;
+  color: var(--ink);
+}
+
+/* ---------- phone ---------- */
+@media (max-width: 640px) {
+  .notifications-page { --np-pad: 18px; }
+
+  .notifications-page > .section-heading { padding-top: 18px; padding-bottom: 18px; }
+  .notifications-page > .section-heading > div { padding-left: 60px; }
+  .notifications-page > .section-heading > div::before { width: 46px; height: 46px; border-radius: 14px; background-size: 22px; }
+  .notifications-page > .section-heading h2 { font-size: 21px; }
+  .notifications-page > .section-heading > .text-button { width: 100%; }
+
+  .notification-item {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .notification-item-content { flex-basis: calc(100% - 60px); }
+
+  .notification-item-actions {
+    width: 100%;
+    justify-content: flex-end;
+    padding-top: 12px;
+    border-top: 1px dashed var(--line);
+  }
+
+  .notification-item-actions .text-button { flex: 1; }
+}
