@@ -4,6 +4,7 @@ import { apiUrl } from "./api";
 import SecurityPinPage from "./SecurityPinPage";
 import { apiErrorMessage } from "./apiErrors";
 import MoneyRequestsPage from "./MoneyRequestsPage";
+import RewardsPage from "./RewardsPage";
 import RecentContacts, { getRecentContacts } from "./RecentContacts.jsx";
 
 
@@ -111,6 +112,7 @@ const [accountLoading, setAccountLoading] = useState(false);
     { name: "Withdraw", icon: "withdraw" },
     { name: "Money Requests", icon: "swap" },
     { name: "Transactions", icon: "swap" },
+    { name: "My Rewards", icon: "gift" },
     { name: "Security & PIN", icon: "shield" }
   ];
 
@@ -1109,6 +1111,11 @@ if (!token) {
     }
   />
 )}
+
+{activePage === "My Rewards" && (
+  <RewardsPage token={token} />
+)}
+
 <footer className="footer">
           <span>© 2026 KaasuPay</span>
           <span>Manage your money with confidence.</span>
@@ -4903,6 +4910,7 @@ const ICON_PATHS = {
   card: (<><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18" /><path d="M7 15h4" /></>),
   refresh: (<><path d="M20 11a8 8 0 0 0-14.5-4" /><path d="M5 3v4h4" /><path d="M4 13a8 8 0 0 0 14.5 4" /><path d="M19 21v-4h-4" /></>),
     download: (<><path d="M12 4v11" /><path d="m7 11 5 5 5-5" /><path d="M5 20h14" /></>),
+  gift: (<><rect x="3" y="8" width="18" height="4" rx="1" /><path d="M12 8v13" /><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7" /><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5" /></>),
 };
 
 function Icon({ name, size = "1em", className = "" }) {

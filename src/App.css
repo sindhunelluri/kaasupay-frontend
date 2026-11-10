@@ -5295,3 +5295,431 @@ button[style*="rgb(255, 247, 237)"] {
   cursor: pointer;
   white-space: nowrap;
 }
+
+/* ==========================================================================
+   MY REWARDS PAGE
+   Unclaimed cards = dark ink ticket with coin rings (same motif as balance card)
+   Claimed cards   = light card with jade glow
+   Expired / luck  = quiet, muted card
+   ========================================================================== */
+.rewards-page {
+  display: grid;
+  gap: 22px;
+  margin-bottom: 22px;
+}
+
+/* ---------- hero heading ---------- */
+.rewards-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 26px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: linear-gradient(125deg, var(--coin-soft) 0%, var(--surface) 62%, var(--coin-soft) 100%);
+  box-shadow: var(--shadow-sm);
+}
+
+.rewards-eyebrow {
+  display: inline-block;
+  margin-bottom: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--coin-deep);
+}
+
+.rewards-heading h1 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.rewards-heading h1::after {
+  content: "";
+  display: block;
+  width: 34px;
+  height: 3px;
+  margin-top: 10px;
+  border-radius: 3px;
+  background: var(--coin);
+}
+
+.rewards-heading p {
+  margin: 10px 0 0;
+  font-size: 14.5px;
+  color: var(--muted);
+}
+
+.rewards-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s, background-color 0.2s;
+}
+
+.rewards-refresh:hover:not(:disabled) {
+  border-color: var(--coin);
+  background: var(--coin-soft);
+}
+
+.rewards-refresh:disabled { opacity: 0.55; }
+
+@media (hover: hover) {
+  .rewards-refresh:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+}
+
+/* ---------- messages ---------- */
+.rewards-message {
+  margin: 0;
+  padding: 12px 16px;
+  border-left: 4px solid var(--coin);
+  border-radius: var(--r-sm);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  animation: fade-in 0.2s ease-out;
+}
+
+.rewards-message.success { background: var(--jade-soft); border-left-color: var(--jade); color: var(--jade); }
+.rewards-message.error   { background: var(--danger-soft); border-left-color: var(--danger); color: var(--danger); }
+.rewards-message.info    { background: var(--coin-soft); border-left-color: var(--coin); color: var(--coin-deep); }
+
+/* ---------- loading ---------- */
+.rewards-loading {
+  padding: 60px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  text-align: center;
+  font-weight: 600;
+  color: var(--muted);
+  animation: rewards-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes rewards-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ---------- empty state ---------- */
+.rewards-empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 64px 20px;
+  border: 1.5px dashed var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  text-align: center;
+}
+
+.rewards-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  margin-bottom: 6px;
+  border-radius: 50%;
+  background: var(--coin-soft);
+  box-shadow: 0 0 0 10px rgba(201, 141, 95, 0.1);
+  font-size: 40px;
+}
+
+.rewards-empty h2 { font-size: 22px; }
+.rewards-empty p { max-width: 360px; font-size: 14.5px; color: var(--muted); }
+
+/* ---------- grid ---------- */
+.rewards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 20px;
+}
+
+/* ---------- card base ---------- */
+.reward-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 330px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+/* ticket notches on the dashed footer line */
+.reward-card::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 39px;
+  height: 18px;
+  background:
+    radial-gradient(circle at 0 50%, var(--paper) 0 9px, transparent 9.5px),
+    radial-gradient(circle at 100% 50%, var(--paper) 0 9px, transparent 9.5px);
+  pointer-events: none;
+}
+
+.reward-card > * { position: relative; z-index: 1; }
+
+@media (hover: hover) {
+  .reward-card:hover {
+    transform: translateY(-6px);
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+/* top row */
+.reward-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 18px 20px 0;
+}
+
+.reward-card-top > span:first-child {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--coin-deep);
+}
+
+.reward-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.reward-status::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.reward-status.unclaimed { background: var(--coin); color: var(--ink); }
+.reward-status.claimed { background: var(--jade-soft); color: var(--jade); }
+.reward-status.expired,
+.reward-status.exhausted { background: var(--paper); color: var(--faint); }
+
+/* content */
+.reward-card-content {
+  flex: 1;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 4px;
+  padding: 14px 24px 22px;
+  text-align: center;
+}
+
+.reward-card-content h2 { font-size: 20px; line-height: 1.25; }
+.reward-card-content p { font-size: 13.5px; color: var(--muted); }
+
+.reward-gift {
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  margin-bottom: 10px;
+  border-radius: 50%;
+  background: var(--coin-soft);
+  box-shadow: 0 0 0 10px rgba(201, 141, 95, 0.1);
+  font-size: 44px;
+  line-height: 1;
+}
+
+/* footer */
+.reward-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 20px;
+  border-top: 2px dashed var(--line);
+  font-size: 12px;
+  color: var(--faint);
+}
+
+/* ---------- UNCLAIMED: dark ticket with coin rings ---------- */
+.reward-card.unclaimed {
+  border-color: transparent;
+  background: radial-gradient(120% 120% at 0% 0%, var(--ink-3) 0%, var(--ink) 60%);
+  color: #fff;
+  box-shadow: var(--shadow-md);
+}
+
+.reward-card.unclaimed::before {
+  content: "";
+  position: absolute;
+  top: -90px;
+  right: -90px;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: repeating-radial-gradient(circle, transparent 0 22px, rgba(201, 141, 95, 0.22) 22px 24px);
+  pointer-events: none;
+}
+
+.reward-card.unclaimed .reward-card-top > span:first-child { color: var(--coin); }
+.reward-card.unclaimed .reward-card-content h2 { color: #fff; }
+.reward-card.unclaimed .reward-card-content p { color: rgba(255, 255, 255, 0.65); }
+.reward-card.unclaimed .reward-card-footer { border-top-color: rgba(255, 255, 255, 0.18); color: rgba(255, 255, 255, 0.5); }
+
+.reward-card.unclaimed .reward-gift {
+  background: rgba(201, 141, 95, 0.18);
+  box-shadow: 0 0 0 10px rgba(201, 141, 95, 0.08), 0 0 40px rgba(201, 141, 95, 0.35);
+  animation: reward-float 3s ease-in-out infinite;
+}
+
+@keyframes reward-float {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-6px) rotate(3deg); }
+}
+
+/* scratch button */
+.reward-scratch-button {
+  position: relative;
+  overflow: hidden;
+  min-height: 46px;
+  margin-top: 14px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--coin);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 14.5px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) inset, 0 8px 18px -8px rgba(201, 141, 95, 0.9);
+  transition: transform 0.2s, background-color 0.2s, box-shadow 0.2s;
+}
+
+.reward-scratch-button::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -60%;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: skewX(-20deg);
+  animation: reward-shine 2.8s ease-in-out infinite;
+}
+
+@keyframes reward-shine {
+  0%, 55% { left: -60%; }
+  100% { left: 130%; }
+}
+
+.reward-scratch-button:hover:not(:disabled) { background: #d69c6e; }
+.reward-scratch-button:active:not(:disabled) { transform: scale(0.97); }
+
+.reward-scratch-button:disabled {
+  background: #e6dccf;
+  color: #8a7a68;
+  box-shadow: none;
+}
+
+.reward-scratch-button:disabled::after { animation: none; }
+
+@media (hover: hover) {
+  .reward-scratch-button:hover:not(:disabled) { transform: translateY(-2px); }
+}
+
+/* ---------- CLAIMED: jade glow ---------- */
+.reward-card.claimed {
+  border-color: var(--jade);
+  background: linear-gradient(165deg, var(--jade-soft) 0%, var(--surface) 62%);
+}
+
+.reward-card.claimed .reward-gift {
+  background: var(--surface);
+  box-shadow: 0 0 0 10px rgba(18, 128, 95, 0.12);
+}
+
+.reward-result-label {
+  font-size: 12px !important;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--jade) !important;
+}
+
+.reward-card-content h2.reward-amount {
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--jade);
+}
+
+/* ---------- EXPIRED / BETTER LUCK: quiet ---------- */
+.reward-card.expired,
+.reward-card.exhausted {
+  background: var(--paper);
+  border-style: dashed;
+  box-shadow: none;
+}
+
+.reward-card.expired .reward-gift,
+.reward-card.exhausted .reward-gift {
+  background: var(--surface);
+  box-shadow: 0 0 0 10px rgba(129, 120, 111, 0.1);
+  filter: grayscale(0.6);
+}
+
+.reward-card.expired .reward-card-content h2,
+.reward-card.exhausted .reward-card-content h2 { color: var(--muted); }
+
+@media (hover: hover) {
+  .reward-card.expired:hover,
+  .reward-card.exhausted:hover { transform: none; box-shadow: none; }
+}
+
+/* ---------- phone ---------- */
+@media (max-width: 640px) {
+  .rewards-heading { padding: 20px 18px; }
+  .rewards-heading h1 { font-size: 25px; }
+  .rewards-refresh { width: 100%; justify-content: center; }
+  .rewards-grid { grid-template-columns: 1fr; }
+  .reward-card { min-height: 300px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reward-card.unclaimed .reward-gift,
+  .reward-scratch-button::after,
+  .rewards-loading { animation: none !important; }
+}
