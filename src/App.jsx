@@ -6,7 +6,7 @@ import { apiErrorMessage } from "./apiErrors";
 import MoneyRequestsPage from "./MoneyRequestsPage";
 import RewardsPage from "./RewardsPage";
 import RecentContacts, { getRecentContacts } from "./RecentContacts.jsx";
-
+import AutoPayPage from "./AutoPayPage";
 
 function App() {
   const [activePage, setActivePage] = useState("Dashboard");
@@ -90,6 +90,9 @@ useEffect(() => {
   const [showLimit, setShowLimit] = useState(false);
   const [loggingOutAll, setLoggingOutAll] = useState(false);
   const [transactions, setTransactions] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+const [unreadCount, setUnreadCount] = useState(0);
+const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [contactTransactions, setContactTransactions] = useState([]);
   const [transactionPagination, setTransactionPagination] = useState({
   page: 1,
@@ -113,8 +116,89 @@ const [accountLoading, setAccountLoading] = useState(false);
     { name: "Money Requests", icon: "swap" },
     { name: "Transactions", icon: "swap" },
     { name: "My Rewards", icon: "gift" },
+    { name: "AutoPay", icon: "calendar-clock" },
+    { name: "Notifications", icon: "bell" },
     { name: "Security & PIN", icon: "shield" }
+
   ];
+
+  async function loadNotifications() {
+  if (!token) return;
+
+  setNotificationsLoading(true);
+
+  try {
+    const response = await fetch(
+      apiUrl("/api/v1/notifications"),
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Could not load notifications.");
+    }
+
+    setNotifications(data.notifications || []);
+    setUnreadCount(data.unreadCount || 0);
+  } catch (error) {
+    console.error("Load notifications error:", error);
+  } finally {
+    setNotificationsLoading(false);
+  }
+}
+
+async function markNotificationRead(notificationId) {
+  try {
+    const response = await fetch(
+      apiUrl(`/api/v1/notifications/${notificationId}/read`),
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Could not update notification.");
+    }
+
+    await loadNotifications();
+  } catch (error) {
+    console.error("Mark notification read error:", error);
+  }
+}
+
+async function markAllNotificationsRead() {
+  try {
+    const response = await fetch(
+      apiUrl("/api/v1/notifications/read-all"),
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Could not update notifications.");
+    }
+
+    await loadNotifications();
+  } catch (error) {
+    console.error("Mark all notifications read error:", error);
+  }
+}
 
   async function handleAuth(formData) {
     setAuthError("");
@@ -346,6 +430,7 @@ useEffect(() => {
       setAccountLoading(true);
       setAuthError("");
       loadLimits();
+      loadNotifications();
       
       try {
         const headers = {
@@ -749,6 +834,23 @@ if (!token) {
               >
                 <span aria-hidden="true">{theme === "dark" ? "☀" : "☾"}</span>
               </button>
+             <button
+  type="button"
+  className="topbar-chip notification-bell"
+  onClick={() => {
+    navigate("Notifications");
+    loadNotifications();
+  }}
+  aria-label={`Notifications, ${unreadCount} unread`}
+  title="Notifications"
+>
+  <Icon name="bell" />
+  {unreadCount > 0 && (
+    <span className="notification-badge">
+      {unreadCount > 99 ? "99+" : unreadCount}
+    </span>
+  )}
+</button> 
             <div className="limit-wrap">
               <button
                 type="button"
@@ -845,6 +947,7 @@ if (!token) {
               {(user?.lastName?.[0] || "P").toUpperCase()}
             </div>
           </div>
+
         </header>
 
         {authError && (
@@ -1114,6 +1217,94 @@ if (!token) {
 
 {activePage === "My Rewards" && (
   <RewardsPage token={token} />
+)}
+
+{activePage === "AutoPay" && (
+    <AutoPayPage token={token} />
+)}
+
+{activePage === "Notifications" && (
+  <section className="content-card notifications-page">
+    <div className="section-heading">
+      <div>
+        <h2>Notifications</h2>
+        <p>
+          You have {unreadCount} unread notification
+          {unreadCount === 1 ? "" : "s"}.
+        </p>
+      </div>
+
+      {unreadCount > 0 && (
+        <button
+          type="button"
+          className="text-button"
+          onClick={markAllNotificationsRead}
+        >
+          Mark all as read
+        </button>
+      )}
+    </div>
+
+    {notificationsLoading ? (
+      <p className="form-help">Loading notifications...</p>
+    ) : notifications.length === 0 ? (
+      <p className="form-help">You don't have any notifications yet.</p>
+    ) : (
+      <div className="notification-list">
+        {notifications.map((item) => (
+          <article
+            key={item._id}
+            className={`notification-item ${item.isRead ? "read" : "unread"}`}
+          >
+            <div className="notification-item-content">
+              <div className="notification-item-heading">
+                <strong>{item.title}</strong>
+                {!item.isRead && (
+                  <span className="notification-unread-dot" />
+                )}
+              </div>
+
+              <p>{item.message}</p>
+
+              <small>
+                {new Date(item.createdAt).toLocaleString("en-IN")}
+              </small>
+            </div>
+
+            <div className="notification-item-actions">
+              {item.link && (
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => {
+                    const pages = {
+                      "/transactions": "Transactions",
+                      "/money-requests": "Money Requests",
+                      "/autopay": "AutoPay",
+                    };
+
+                    if (pages[item.link]) navigate(pages[item.link]);
+                  }}
+                >
+                  View
+                </button>
+              )}
+
+              {!item.isRead && (
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => markNotificationRead(item._id)}
+                >
+                  Mark as read
+                </button>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+    )}
+  </section>
 )}
 
 <footer className="footer">
@@ -2898,7 +3089,7 @@ function txStatusKey(status) {
     case "CANCELLED":
       return "failed";
     default:
-      return "Success";
+      return "success";
   }
 }
 
@@ -4911,6 +5102,13 @@ const ICON_PATHS = {
   refresh: (<><path d="M20 11a8 8 0 0 0-14.5-4" /><path d="M5 3v4h4" /><path d="M4 13a8 8 0 0 0 14.5 4" /><path d="M19 21v-4h-4" /></>),
     download: (<><path d="M12 4v11" /><path d="m7 11 5 5 5-5" /><path d="M5 20h14" /></>),
   gift: (<><rect x="3" y="8" width="18" height="4" rx="1" /><path d="M12 8v13" /><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7" /><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5" /></>),
+  "calendar-clock": (<><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h5" /><circle cx="16" cy="16" r="6" /><path d="M16 14v2.2l1.6 1" /></>),
+  bell: (
+  <>
+    <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+    <path d="M10 21h4" />
+  </>
+),
 };
 
 function Icon({ name, size = "1em", className = "" }) {
