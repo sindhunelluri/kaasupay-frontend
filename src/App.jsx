@@ -6,7 +6,7 @@ import { apiErrorMessage } from "./apiErrors";
 import MoneyRequestsPage from "./MoneyRequestsPage";
 import RewardsPage from "./RewardsPage";
 import RecentContacts, { getRecentContacts } from "./RecentContacts.jsx";
-
+import AutoPayPage from "./AutoPayPage";
 
 function App() {
   const [activePage, setActivePage] = useState("Dashboard");
@@ -113,7 +113,9 @@ const [accountLoading, setAccountLoading] = useState(false);
     { name: "Money Requests", icon: "swap" },
     { name: "Transactions", icon: "swap" },
     { name: "My Rewards", icon: "gift" },
+    { name: "AutoPay", icon: "calendar-clock" },
     { name: "Security & PIN", icon: "shield" }
+
   ];
 
   async function handleAuth(formData) {
@@ -1114,6 +1116,10 @@ if (!token) {
 
 {activePage === "My Rewards" && (
   <RewardsPage token={token} />
+)}
+
+{activePage === "AutoPay" && (
+    <AutoPayPage token={token} />
 )}
 
 <footer className="footer">
@@ -4911,6 +4917,7 @@ const ICON_PATHS = {
   refresh: (<><path d="M20 11a8 8 0 0 0-14.5-4" /><path d="M5 3v4h4" /><path d="M4 13a8 8 0 0 0 14.5 4" /><path d="M19 21v-4h-4" /></>),
     download: (<><path d="M12 4v11" /><path d="m7 11 5 5 5-5" /><path d="M5 20h14" /></>),
   gift: (<><rect x="3" y="8" width="18" height="4" rx="1" /><path d="M12 8v13" /><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7" /><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5" /></>),
+  "calendar-clock": (<><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h5" /><circle cx="16" cy="16" r="6" /><path d="M16 14v2.2l1.6 1" /></>),
 };
 
 function Icon({ name, size = "1em", className = "" }) {
