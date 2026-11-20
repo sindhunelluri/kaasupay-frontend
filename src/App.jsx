@@ -7,9 +7,20 @@ import MoneyRequestsPage from "./MoneyRequestsPage";
 import RewardsPage from "./RewardsPage";
 import RecentContacts, { getRecentContacts } from "./RecentContacts.jsx";
 import AutoPayPage from "./AutoPayPage";
+import MerchantPage from "./MerchantPage";
+import MerchantPayPage from "./MerchantPayPage";
 
 function App() {
   const [activePage, setActivePage] = useState("Dashboard");
+  const merchantOrderId = new URLSearchParams(
+  window.location.search
+).get("order");
+
+useEffect(() => {
+  if (merchantOrderId) {
+    setActivePage("Customer Payment");
+  }
+}, [merchantOrderId]);
   const [showBalance, setShowBalance] = useState(true);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileContainerRef = useRef(null);
@@ -117,6 +128,7 @@ const [accountLoading, setAccountLoading] = useState(false);
     { name: "Transactions", icon: "swap" },
     { name: "My Rewards", icon: "gift" },
     { name: "AutoPay", icon: "calendar-clock" },
+    { name: "Merchant Payments", icon: "card" },
     { name: "Notifications", icon: "bell" },
     { name: "Security & PIN", icon: "shield" }
 
@@ -1221,6 +1233,21 @@ if (!token) {
 
 {activePage === "AutoPay" && (
     <AutoPayPage token={token} />
+)}
+
+{activePage === "Merchant Payments" && (
+  <MerchantPage
+    token={token}
+    onSuccess={refreshWalletData}
+  />
+)}
+
+{activePage === "Customer Payment" && merchantOrderId && (
+  <MerchantPayPage
+    orderId={merchantOrderId}
+    token={token}
+    onSuccess={refreshWalletData}
+  />
 )}
 
 {activePage === "Notifications" && (
