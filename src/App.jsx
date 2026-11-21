@@ -129,7 +129,7 @@ const [accountLoading, setAccountLoading] = useState(false);
     { name: "My Rewards", icon: "gift" },
     { name: "AutoPay", icon: "calendar-clock" },
     { name: "Merchant Payments", icon: "card" },
-    { name: "Notifications", icon: "bell" },
+    //{ name: "Notifications", icon: "bell" },
     { name: "Security & PIN", icon: "shield" }
 
   ];
@@ -210,6 +210,23 @@ async function markAllNotificationsRead() {
   } catch (error) {
     console.error("Mark all notifications read error:", error);
   }
+}
+
+
+function openNotification(item) {
+  const pages = {
+    "/transactions": "Transactions",
+    "/money-requests": "Money Requests",
+    "/autopay": "AutoPay",
+    "/rewards": "My Rewards",
+    "/security": "Security & PIN",
+    "/withdraw": "Withdraw",
+    "/add-money": "Add Money",
+    "/merchant": "Merchant Payments",
+  };
+
+  if (!item.isRead) markNotificationRead(item._id);
+  if (pages[item.link]) navigate(pages[item.link]);
 }
 
   async function handleAuth(formData) {
@@ -846,23 +863,15 @@ if (!token) {
               >
                 <span aria-hidden="true">{theme === "dark" ? "☀" : "☾"}</span>
               </button>
-             <button
-  type="button"
-  className="topbar-chip notification-bell"
-  onClick={() => {
-    navigate("Notifications");
-    loadNotifications();
-  }}
-  aria-label={`Notifications, ${unreadCount} unread`}
-  title="Notifications"
->
-  <Icon name="bell" />
-  {unreadCount > 0 && (
-    <span className="notification-badge">
-      {unreadCount > 99 ? "99+" : unreadCount}
-    </span>
-  )}
-</button> 
+            <NotificationBell
+  notifications={notifications}
+  unreadCount={unreadCount}
+  loading={notificationsLoading}
+  onOpenPanel={loadNotifications}
+  onMarkRead={markNotificationRead}
+  onMarkAllRead={markAllNotificationsRead}
+  onOpenItem={openNotification}
+/>
             <div className="limit-wrap">
               <button
                 type="button"
@@ -1250,7 +1259,7 @@ if (!token) {
   />
 )}
 
-{activePage === "Notifications" && (
+{/*{activePage === "Notifications" && (
   <section className="content-card notifications-page">
     <div className="section-heading">
       <div>
@@ -1332,7 +1341,7 @@ if (!token) {
       </div>
     )}
   </section>
-)}
+)}*/}
 
 <footer className="footer">
           <span>© 2026 KaasuPay</span>
@@ -1343,6 +1352,151 @@ if (!token) {
   );
 }
 
+function NotificationBell({
+  notifications = [],
+  unreadCount = 0,
+  loading = false,
+  onOpenPanel,
+  onMarkRead,
+  onMarkAllRead,
+  onOpenItem,
+}) {
+  const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState("ALL");
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    const onKey = (e) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  function timeAgo(value) {
+    if (!value) return "";
+    const s = Math.floor((Date.now() - new Date(value).getTime()) / 1000);
+    if (s < 60) return "Just now";
+    if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)} hr ago`;
+    if (s < 604800) return `${Math.floor(s / 86400)} d ago`;
+    return new Date(value).toLocaleDateString("en-IN");
+  }
+
+  const visible =
+    tab === "UNREAD" ? notifications.filter((n) => !n.isRead) : notifications;
+
+  return (
+    <div className="nb-wrap" ref={wrapRef}>
+      <button
+        type="button"
+        className="topbar-chip notification-bell"
+        aria-label={`Notifications, ${unreadCount} unread`}
+        title="Notifications"
+        onClick={() => {
+          const next = !open;
+          setOpen(next);
+          if (next && onOpenPanel) onOpenPanel();
+        }}
+      >
+        <Icon name="bell" />
+        {unreadCount > 0 && (
+          <span className="notification-badge">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="nb-panel" role="dialog" aria-label="Notifications">
+          <div className="nb-head">
+            <div>
+              <h4>Notifications</h4>
+              <p>{unreadCount ? `${unreadCount} unread` : "You're all caught up"}</p>
+            </div>
+            <button
+              type="button"
+              className="nb-markall"
+              onClick={onMarkAllRead}
+              disabled={unreadCount === 0}
+            >
+              Mark all read
+            </button>
+          </div>
+
+          <div className="nb-tabs">
+            <button
+              type="button"
+              className={tab === "ALL" ? "active" : ""}
+              onClick={() => setTab("ALL")}
+            >
+              All ({notifications.length})
+            </button>
+            <button
+              type="button"
+              className={tab === "UNREAD" ? "active" : ""}
+              onClick={() => setTab("UNREAD")}
+            >
+              Unread ({unreadCount})
+            </button>
+          </div>
+
+          <div className="nb-list">
+            {loading && notifications.length === 0 ? (
+              <p className="nb-empty">Loading...</p>
+            ) : visible.length === 0 ? (
+              <p className="nb-empty">
+                {tab === "UNREAD"
+                  ? "No unread notifications."
+                  : "You don't have any notifications yet."}
+              </p>
+            ) : (
+              visible.map((item) => (
+                <div
+                  key={item._id}
+                  className={`nb-item ${item.isRead ? "read" : "unread"}`}
+                >
+                  <button
+                    type="button"
+                    className="nb-item-main"
+                    onClick={() => {
+                      setOpen(false);
+                      onOpenItem(item);
+                    }}
+                  >
+                    <span className="nb-dot" />
+                    <span className="nb-text">
+                      <strong>{item.title}</strong>
+                      {item.message && <span>{item.message}</span>}
+                      <small>{timeAgo(item.createdAt)}</small>
+                    </span>
+                  </button>
+
+                  {!item.isRead && (
+                    <button
+                      type="button"
+                      className="nb-read-btn"
+                      title="Mark as read"
+                      onClick={() => onMarkRead(item._id)}
+                    >
+                      ✓
+                    </button>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function LandingPage({ onSignIn, onCreateAccount }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

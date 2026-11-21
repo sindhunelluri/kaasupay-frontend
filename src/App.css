@@ -7031,3 +7031,428 @@ textarea.kp-input {
     transition: none !important;
   }
 }
+
+/* ==========================================================================
+   MY REWARDS PAGE: additions   (paste at the END of App.css)
+   Your App.css already styles .rewards-page, .rewards-heading, .reward-card,
+   .reward-gift, .reward-amount, .rewards-empty, etc.
+   These rules cover the classes the new RewardsPage.jsx adds:
+   .rewards-summary, .rewards-stat, .rewards-filters, .rewards-filter,
+   .reward-code, .reward-note and the .type-* claimed-card variants.
+   Works in light and dark mode (uses the same tokens).
+   ========================================================================== */
+
+/* ---------- summary strip ---------- */
+.rewards-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.rewards-stat {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 18px 20px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+/* gold bar on the left */
+.rewards-stat::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 4px;
+  background: var(--coin);
+}
+
+.rewards-stat span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.rewards-stat strong {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+/* first card (cashback) is the hero stat: dark with coin rings */
+.rewards-stat:first-child {
+  border-color: transparent;
+  background: radial-gradient(120% 120% at 0% 0%, var(--ink-3) 0%, var(--ink) 60%);
+  box-shadow: var(--shadow-md);
+}
+
+.rewards-stat:first-child::after {
+  content: "";
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 170px;
+  height: 170px;
+  border-radius: 50%;
+  background: repeating-radial-gradient(circle, transparent 0 16px, rgba(201, 141, 95, 0.22) 16px 18px);
+  pointer-events: none;
+}
+
+.rewards-stat:first-child > * { position: relative; z-index: 1; }
+.rewards-stat:first-child span { color: rgba(255, 255, 255, 0.6); }
+.rewards-stat:first-child strong { color: var(--coin); }
+
+@media (hover: hover) {
+  .rewards-stat:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+  }
+}
+
+/* ---------- filter tabs ---------- */
+.rewards-filters {
+  display: inline-flex;
+  max-width: 100%;
+  padding: 4px;
+  gap: 4px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  scrollbar-width: none;
+  justify-self: start;
+}
+
+.rewards-filters::-webkit-scrollbar { display: none; }
+
+.rewards-filter {
+  flex-shrink: 0;
+  padding: 9px 18px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.rewards-filter:hover:not(.active) {
+  color: var(--text);
+  background: var(--coin-soft);
+}
+
+.rewards-filter.active {
+  background: var(--ink);
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+
+:root[data-theme="dark"] .rewards-filter.active {
+  background: var(--coin);
+  color: var(--ink);
+}
+
+/* ---------- coupon code button (claimed COUPON cards) ---------- */
+.reward-code {
+  display: grid;
+  gap: 2px;
+  min-width: 190px;
+  margin-top: 6px;
+  padding: 12px 22px;
+  border: 2px dashed var(--coin);
+  border-radius: var(--r-md);
+  background: var(--coin-soft);
+  color: var(--coin-deep);
+  text-align: center;
+  transition: transform 0.2s, background-color 0.2s, box-shadow 0.2s;
+}
+
+.reward-code span {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  overflow-wrap: anywhere;
+}
+
+.reward-code small {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.reward-code:hover {
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.reward-code:active { transform: scale(0.97); }
+
+/* small helper line under prizes ("Valid till", "Added to your wallet") */
+.reward-note {
+  margin-top: 4px;
+  font-size: 12.5px !important;
+  color: var(--muted);
+}
+
+/* ---------- claimed cards: colour by reward type ---------- */
+.reward-card.claimed.type-cashback {
+  border-color: var(--jade);
+  background: linear-gradient(165deg, var(--jade-soft) 0%, var(--surface) 62%);
+}
+
+.reward-card.claimed.type-coupon {
+  border-color: var(--coin);
+  background: linear-gradient(165deg, var(--coin-soft) 0%, var(--surface) 62%);
+}
+
+.reward-card.claimed.type-coupon .reward-result-label,
+.reward-card.claimed.type-coupon .reward-status { color: var(--coin-deep) !important; }
+.reward-card.claimed.type-coupon .reward-status { background: var(--coin-soft); }
+.reward-card.claimed.type-coupon .reward-gift { box-shadow: 0 0 0 10px rgba(201, 141, 95, 0.14); }
+
+.reward-card.claimed.type-discount {
+  border-color: var(--blue);
+  background: linear-gradient(165deg, var(--blue-soft) 0%, var(--surface) 62%);
+}
+
+.reward-card.claimed.type-discount .reward-result-label,
+.reward-card.claimed.type-discount .reward-amount { color: var(--blue) !important; }
+.reward-card.claimed.type-discount .reward-status { background: var(--blue-soft); color: var(--blue); }
+.reward-card.claimed.type-discount .reward-gift { box-shadow: 0 0 0 10px rgba(44, 106, 156, 0.12); }
+
+.reward-card.claimed.type-points {
+  border-color: var(--violet);
+  background: linear-gradient(165deg, var(--violet-soft) 0%, var(--surface) 62%);
+}
+
+.reward-card.claimed.type-points .reward-result-label,
+.reward-card.claimed.type-points .reward-amount { color: var(--violet) !important; }
+.reward-card.claimed.type-points .reward-status { background: var(--violet-soft); color: var(--violet); }
+.reward-card.claimed.type-points .reward-gift { box-shadow: 0 0 0 10px rgba(101, 82, 166, 0.12); }
+
+.reward-card.claimed.type-none {
+  border-color: var(--line);
+  border-style: dashed;
+  background: var(--paper);
+  box-shadow: none;
+}
+
+.reward-card.claimed.type-none .reward-card-content h2 { color: var(--muted); }
+.reward-card.claimed.type-none .reward-gift { filter: grayscale(0.6); }
+
+/* ---------- tablet and phone ---------- */
+@media (max-width: 960px) {
+  .rewards-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .rewards-stat { padding: 16px; }
+  .rewards-stat strong { font-size: 22px; }
+  .rewards-filters { display: flex; width: 100%; }
+  .rewards-filter { flex: 1; padding: 9px 12px; }
+  .reward-code { width: 100%; }
+}
+
+/* ==========================================================================
+   NOTIFICATION BELL DROPDOWN
+   ========================================================================== */
+.nb-wrap { position: relative; }
+
+.nb-wrap .notification-bell { cursor: pointer; }
+
+.nb-panel {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  width: min(400px, 92vw);
+  max-height: min(560px, 78vh);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  animation: pop-in 0.16s ease-out;
+}
+
+/* ---------- header ---------- */
+.nb-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(125deg, var(--coin-soft) 0%, var(--surface) 70%);
+}
+
+.nb-head h4 { font-size: 17px; color: var(--text); }
+.nb-head p { margin-top: 2px; font-size: 12.5px; color: var(--muted); }
+
+.nb-markall {
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--coin-deep);
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.nb-markall:hover:not(:disabled) { border-color: var(--coin); background: var(--coin-soft); }
+.nb-markall:disabled { opacity: 0.45; }
+
+/* ---------- tabs ---------- */
+.nb-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin: 12px 14px 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--paper);
+}
+
+.nb-tabs button {
+  padding: 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.nb-tabs button:hover:not(.active) { color: var(--text); }
+.nb-tabs button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+
+/* ---------- list ---------- */
+.nb-list {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 10px 14px 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.nb-item {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.nb-item:hover { border-color: var(--coin); box-shadow: var(--shadow-sm); }
+
+/* unread: warm card + gold bar */
+.nb-item.unread {
+  border-color: var(--coin);
+  background: linear-gradient(100deg, var(--coin-soft) 0%, var(--surface) 75%);
+}
+
+.nb-item.unread::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 4px;
+  background: var(--coin);
+}
+
+.nb-item-main {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 12px 12px 16px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.nb-dot {
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--line);
+}
+
+.nb-item.unread .nb-dot { background: var(--coin); box-shadow: 0 0 0 4px var(--coin-soft); }
+
+.nb-text { display: grid; gap: 2px; min-width: 0; }
+.nb-text strong { font-size: 14px; font-weight: 700; color: var(--text); overflow-wrap: anywhere; }
+.nb-text span { font-size: 13px; line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; }
+.nb-text small { margin-top: 2px; font-size: 11.5px; color: var(--faint); }
+
+.nb-item.read .nb-text strong { color: var(--muted); font-weight: 600; }
+
+.nb-read-btn {
+  flex-shrink: 0;
+  align-self: center;
+  width: 32px;
+  height: 32px;
+  margin-right: 10px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--jade);
+  font-size: 14px;
+  font-weight: 700;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.nb-read-btn:hover { border-color: var(--jade); background: var(--jade-soft); }
+
+.nb-empty {
+  padding: 36px 12px;
+  border: 1.5px dashed var(--line);
+  border-radius: var(--r-md);
+  text-align: center;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* ---------- phone: panel becomes a full-width sheet under the top bar ---------- */
+@media (max-width: 640px) {
+  .nb-wrap { position: static; }
+
+  .nb-panel {
+    position: fixed;
+    top: 68px;
+    left: 10px;
+    right: 10px;
+    width: auto;
+    max-height: calc(100vh - 84px);
+  }
+}
